@@ -1,226 +1,370 @@
-<!--
-Simple Webcam Capture + Upload page
-Features:
-- Requests camera permission and shows live preview
-- Start / Stop camera
-- Take snapshot and download
-- Upload snapshot to your server via POST /upload (multipart/form-data)
-- Shows status and last uploaded filename returned by server
-
-Hosting notes:
-- getUserMedia requires HTTPS or localhost. To test locally, open http://localhost using a simple static server (python -m http.server) or serve over HTTPS in production.
-- Server must accept multipart/form-data under the field name "photo". Example server-side snippet (Node/Express + multer) is provided at the bottom of this file.
-
-How to use on your server:
-1. Put this file (webcam-uploader.html) in your web server's document root.
-2. Ensure your server listens over HTTPS (recommended) or access via localhost.
-3. Implement a server endpoint POST /upload that accepts the uploaded file and returns JSON { success: true, filename: "..." }.
-
--->
-
-<!doctype html>
+<!DOCTYPE html>
 <html lang="si">
-<head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Webcam Capture & Upload</title>
-  <style>
-    :root{ --bg:#0f172a; --card:#0b1220; --accent:#3b82f6; --muted:#94a3b8; }
-    body{ font-family: system-ui, -apple-system, 'Segoe UI', Roboto, 'Noto Sans', sans-serif; background:linear-gradient(180deg,#071025 0%, #081225 100%); color: #e6eef8; margin:0; min-height:100vh; display:flex; align-items:center; justify-content:center; padding:24px; }
-    .card{ background:rgba(255,255,255,0.03); border-radius:12px; padding:18px; width:920px; max-width:calc(100% - 48px); box-shadow: 0 8px 30px rgba(2,6,23,0.6); }
-    .row{ display:flex; gap:12px; align-items:flex-start; }
-    video, canvas{ border-radius:8px; background:#000; max-width:100%; }
-    video{ width:480px; height:360px; object-fit:cover; }
-    canvas{ width:480px; height:360px; display:none; }
-    .controls{ flex:1; }
-    button{ background:var(--accent); color:#021024; border:none; padding:10px 12px; border-radius:8px; cursor:pointer; font-weight:600; margin:6px 6px 6px 0; }
-    button.secondary{ background:transparent; color:var(--muted); border:1px solid rgba(255,255,255,0.06); }
-    label{ display:block; margin-top:8px; color:var(--muted); font-size:13px; }
-    .status{ margin-top:12px; color:var(--muted); font-size:13px; }
-    .small{ font-size:13px; color:var(--muted); }
-    .hidden{ display:none; }
-    .input-row{ display:flex; gap:8px; margin-top:8px; align-items:center; }
-    input[type="text"]{ padding:8px 10px; border-radius:8px; border:1px solid rgba(255,255,255,0.04); background:transparent; color:inherit; }
-  </style>
-</head>
+  <head>
+    <meta charset="utf-8"/>
+    <title>Leaf Recognition — Scan Capture</title>
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <style>
+      :root{
+        --accent: #4caf50;
+        --bg: #f4f9f4;
+        --card: #ffffff;
+      }
+      body{
+        font-family: Arial, sans-serif;
+        background: var(--bg);
+        color:#222;
+        margin:18px;
+        text-align:center;
+      }
+      h1{ margin:6px 0 2px 0; }
+      p.lead{ margin:0 0 14px 0; color:#444; }
+
+      /* Controls */
+      #controls{ margin:12px 0; }
+      button{
+        background:var(--accent); color:#fff; border:none; padding:10px 14px;
+        border-radius:8px; cursor:pointer; font-weight:600; margin:0 6px;
+      }
+      button.stop{ background:#f44336; }
+
+      /* layout */
+      .wrap{
+        display:flex; gap:18px; justify-content:center; flex-wrap:wrap; align-items:flex-start;
+      }
+      /* preview area */
+      .previewCard{
+        width:340px; background:var(--card); border-radius:12px; padding:12px;
+        box-shadow:0 8px 22px rgba(0,0,0,0.06); border:1px solid rgba(0,0,0,0.04);
+      }
+      #webcam-container{
+        width:320px; height:320px; margin:6px auto; position:relative; overflow:hidden;
+        border-radius:8px; border:2px solid rgba(76,175,80,0.15);
+        background:#000;
+      }
+      /* the canvas will be appended here */
+      #webcam-container canvas{ width:100%; height:100%; display:block; }
+
+      /* scanner overlay */
+      .scanner{
+        position:absolute; left:0; right:0; top:0; bottom:0; pointer-events:none;
+      }
+      .scan-line{
+        position:absolute; left:-100%; right:-10%; height:400px; top:0;
+        background: linear-gradient(180deg, rgba(255, 0, 0, 0) 0%, rgba(0, 119, 255, 0.15) 45%, rgba(255,255,255,0.25) 55%, rgba(255,255,255,0) 100%);
+        transform:translateY(-100%);
+        filter: drop-shadow(0 6px 10px rgb(0, 0, 0));
+      }
+      /* when scanning, animate scan-line down */
+      .scanning .scan-line{
+        animation: scanMove 0.7s linear forwards;
+      }
+      @keyframes scanMove {
+        0%{ transform:translateY(-120%); opacity:0; }
+        10%{ opacity:1; }
+        100%{ transform:translateY(120%); opacity:0; }
+      }
+
+      /* flash when capture */
+      .flash {
+        position:absolute; left:0; right:0; top:0; bottom:0; background:white; opacity:0; pointer-events:none;
+        transition: opacity 0.12s ease;
+      }
+      .flash.visible{ opacity:0.7; }
+
+      /* labels and top prediction */
+      #label-container{ text-align:left; margin-top:8px; font-size:0.95rem; color:#222; }
+      .predRow{ padding:4px 6px; border-radius:6px; margin:4px 0; background:rgba(0,0,0,0.02); display:flex; justify-content:space-between; align-items:center; }
+      #topPredictionBox{
+        margin-top:10px; padding:10px; border-radius:10px; background:linear-gradient(180deg,#fff,#eafaf0);
+        border:1px solid rgba(76,175,80,0.18); font-weight:700; display:none; text-align:left;
+      }
+
+      /* gallery */
+      .rightCol{ width:540px; max-width:90%; }
+      .galleryCard{ background:var(--card); padding:10px; border-radius:10px; box-shadow:0 6px 16px rgba(0,0,0,0.06); border:1px solid rgba(0,0,0,0.04); }
+      #gallery{ display:flex; flex-wrap:wrap; gap:10px; justify-content:flex-start; margin-top:10px; }
+      .captureCard{ width:160px; border-radius:8px; overflow:hidden; background:#fff; border:1px solid #eee; padding:6px; text-align:center; }
+      .captureCard img{ width:100%; height:110px; object-fit:cover; border-radius:6px; display:block; }
+      .meta{ font-size:0.82rem; color:#333; margin-top:6px; }
+      .downloadBtn{ display:inline-block; margin-top:6px; padding:6px 8px; border-radius:6px; background:var(--accent); color:#fff; text-decoration:none; font-size:0.82rem; }
+
+      /* small responsiveness */
+      @media (max-width:900px){
+        .wrap{ flex-direction:column; align-items:center; }
+        .rightCol{ width:92%; }
+      }
+    </style>
+  </head>
+
 <body>
-  <div class="card">
-    <h2>Webcam Capture & Upload</h2>
-    <p class="small">ඔබේ කැමරාවට ප්‍රවේශ වීම, ඡායාරූපයක් ගන්නා අතරම server එකට POST කිරීමට මේ පිටුව භාවිතා කරන්න.</p>
+  <h1>Leaf Recognition — Scan Capture</h1>
+  <p class="lead">Live preview හි scanning animation → random capture (1–5s) → gallery එකට save + top prediction box</p>
 
-    <div class="row" style="margin-top:12px;">
-      <div>
-        <video id="video" autoplay playsinline></video>
-        <canvas id="canvas"></canvas>
-        <div style="margin-top:8px;">
-          <button id="startBtn">Start Camera</button>
-          <button id="stopBtn" class="secondary" disabled>Stop Camera</button>
+  <div id="controls">
+    <button id="startBtn">Start Webcam & Model</button>
+    <button id="stopBtn" class="stop" style="display:none;">Stop</button>
+  </div>
+
+  <div class="wrap">
+    <div class="previewCard">
+      <div id="webcam-container">
+        <!-- webcam canvas appended here -->
+        <div class="scanner" id="scannerOverlay">
+          <div class="scan-line"></div>
         </div>
+        <div class="flash" id="flashOverlay"></div>
       </div>
 
-      <div class="controls">
-        <div class="input-row">
-          <button id="snapBtn">Take Snapshot</button>
-          <button id="downloadBtn" class="secondary" disabled>Download</button>
-          <button id="uploadBtn" class="secondary" disabled>Upload to Server</button>
-        </div>
-
-        <label>Server upload URL</label>
-        <input id="uploadUrl" type="text" value="/upload" placeholder="https://example.com/upload" />
-
-        <label>Filename prefix (optional)</label>
-        <input id="fnamePrefix" type="text" placeholder="e.g. cam1_" />
-
-        <div class="status" id="status">Status: <span id="statusText">idle</span></div>
-
-        <hr style="margin:12px 0;border:0;border-top:1px solid rgba(255,255,255,0.03);" />
-
-        <div id="lastResult" class="small">Last upload: <em>none</em></div>
-
-        <details style="margin-top:12px;color:var(--muted);">
-          <summary>Server example (Node/Express)</summary>
-          <pre style="white-space:pre-wrap;font-size:12px;color:#cfe7ff;padding:8px;background:rgba(255,255,255,0.02);border-radius:6px;">
-// npm i express multer
-
-const express = require('express');
-const multer = require('multer');
-const path = require('path');
-const UPLOAD_DIR = path.join(__dirname, 'uploads');
-const storage = multer.diskStorage({ destination: UPLOAD_DIR, filename: (req, file, cb) => cb(null, Date.now() + '-' + file.originalname) });
-const upload = multer({ storage });
-const app = express();
-
-app.post('/upload', upload.single('photo'), (req, res) => {
-  if (!req.file) return res.status(400).json({ success: false, error: 'no file' });
-  res.json({ success: true, filename: req.file.filename, path: '/uploads/' + req.file.filename });
-});
-
-app.use('/uploads', express.static(UPLOAD_DIR));
-app.use(express.static(path.join(__dirname, 'public')));
-app.listen(3000, ()=> console.log('Listening on http://localhost:3000'));
-          </pre>
-        </details>
+      <div id="topPredictionBox">
+        <span id="topLabel">—</span>
+        <span style="float:right;font-weight:800;" id="topPercent">—</span>
+        <div style="clear:both; margin-top:6px; font-size:0.9rem; color:#444;">Captured at: <span id="topTime">—</span></div>
       </div>
+      <br>
+      <button id="toggleResultsBtn">👁 Show/Hide Results</button>
+      <table id="label-table" style="margin: 10px auto; border-collapse: collapse; display: table;">
+          <thead>
+              <tr>
+                  <th style="border:1px solid #ccc; padding:5px;">Details</th>
+              </tr>
+          </thead>
+          <tbody id="label-container"></tbody>
+      </table>
+
+      <div id="label-container"></div>
+    </div>
+
+    <div class="rightCol galleryCard">
+      <div style="display:flex; justify-content:space-between; align-items:center;">
+        <strong>Captured Images</strong>
+        <small style="color:#181313; font-size:0.9rem;">Max: <span id="maxPhotosLabel">Loading...</span></small>
+      </div>
+      <div id="gallery" style="margin-top:12px;"></div>
     </div>
   </div>
 
-<script>
-  const video = document.getElementById('video');
-  const canvas = document.getElementById('canvas');
-  const startBtn = document.getElementById('startBtn');
-  const stopBtn = document.getElementById('stopBtn');
-  const snapBtn = document.getElementById('snapBtn');
-  const downloadBtn = document.getElementById('downloadBtn');
-  const uploadBtn = document.getElementById('uploadBtn');
-  const statusText = document.getElementById('statusText');
-  const lastResult = document.getElementById('lastResult');
-  const uploadUrlInput = document.getElementById('uploadUrl');
-  const fnamePrefix = document.getElementById('fnamePrefix');
+  <!-- TensorFlow.js & Teachable Machine -->
+  <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@latest/dist/tf.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@teachablemachine/image@latest/dist/teachablemachine-image.min.js"></script>
 
-  let stream = null;
-  let latestBlob = null;
+  <script>
+    // ---- CONFIG ----
+    const URL = "/";           // model folder path
+    const CAPTURE_WIDTH = 320;
+    const CAPTURE_HEIGHT = 320;
+    const MIN_DELAY_MS = 1;           // 1 ms
+    const MAX_DELAY_MS = 5000;           // 5 seconds
+    const MAX_PHOTOS = 3;               // gallery limit
+    const SCAN_DURATION_MS = 70;        // how long the scan animation runs before capture
+    // ----------------
 
-  function setStatus(s){ statusText.textContent = s; }
+    // state
+    let model, webcam, maxPredictions;
+    let running = false;
+    let captureTimer = null;
 
-  async function startCamera(){
-    try{
-      setStatus('requesting permission...');
-      stream = await navigator.mediaDevices.getUserMedia({ video: { width: { ideal: 1280 }, height: { ideal: 720 } }, audio: false });
-      video.srcObject = stream;
-      video.play();
-      setStatus('camera started');
-      stopBtn.disabled = false;
+    // elements
+    const startBtn = document.getElementById("startBtn");
+    const stopBtn  = document.getElementById("stopBtn");
+    const webcamContainer = document.getElementById("webcam-container");
+    const scannerOverlay = document.getElementById("scannerOverlay");
+    const flashOverlay = document.getElementById("flashOverlay");
+    const topBox = document.getElementById("topPredictionBox");
+    const topLabel = document.getElementById("topLabel");
+    const topPercent = document.getElementById("topPercent");
+    const topTime = document.getElementById("topTime");
+    const labelContainer = document.getElementById("label-container");
+    const gallery = document.getElementById("gallery");
+    document.getElementById("maxPhotosLabel").innerText = MAX_PHOTOS;
+
+    startBtn.addEventListener("click", startAll);
+    stopBtn.addEventListener("click", stopAll);
+
+    async function startAll(){
       startBtn.disabled = true;
-    }catch(err){
-      console.error(err);
-      setStatus('error: ' + (err.message || err));
-      alert('Camera access failed: ' + (err.message || err));
-    }
-  }
-
-  function stopCamera(){
-    if (!stream) return;
-    stream.getTracks().forEach(t=>t.stop());
-    video.srcObject = null;
-    stream = null;
-    setStatus('camera stopped');
-    stopBtn.disabled = true;
-    startBtn.disabled = false;
-  }
-
-  function takeSnapshot(){
-    if (!video || video.readyState < 2){ alert('Camera not ready'); return; }
-    const w = video.videoWidth;
-    const h = video.videoHeight;
-    canvas.width = w;
-    canvas.height = h;
-    const ctx = canvas.getContext('2d');
-    ctx.drawImage(video, 0, 0, w, h);
-    canvas.style.display = 'block';
-
-    // turn canvas into Blob
-    canvas.toBlob(blob => {
-      latestBlob = blob;
-      downloadBtn.disabled = false;
-      uploadBtn.disabled = false;
-      setStatus('snapshot ready');
-    }, 'image/jpeg', 0.92);
-  }
-
-  function downloadSnapshot(){
-    if (!latestBlob) return alert('No snapshot');
-    const a = document.createElement('a');
-    const name = (fnamePrefix.value || '') + 'snapshot-' + Date.now() + '.jpg';
-    a.href = URL.createObjectURL(latestBlob);
-    a.download = name;
-    document.body.appendChild(a);
-    a.click();
-    a.remove();
-    setStatus('download started');
-  }
-
-  async function uploadSnapshot(){
-    if (!latestBlob) return alert('No snapshot to upload');
-    const uploadUrl = uploadUrlInput.value || '/upload';
-    setStatus('uploading...');
-    const form = new FormData();
-    const filename = (fnamePrefix.value || '') + 'snapshot-' + Date.now() + '.jpg';
-    form.append('photo', latestBlob, filename);
-
-    try{
-      const resp = await fetch(uploadUrl, { method: 'POST', body: form });
-      if(!resp.ok) throw new Error('server returned ' + resp.status);
-      const data = await resp.json();
-      if (data.success){
-        lastResult.innerHTML = 'Last upload: <strong>' + (data.filename || data.path || 'uploaded') + '</strong>';
-        setStatus('upload successful');
-      } else {
-        setStatus('upload failed');
-        alert('Upload failed: ' + (data.error || JSON.stringify(data)));
+      startBtn.innerText = "Loading model...";
+      try {
+        // progress UI simple (could be improved)
+        const modelURL = URL + "model.json";
+        const metadataURL = URL + "metadata.json";
+        model = await tmImage.load(modelURL, metadataURL);
+        maxPredictions = model.getTotalClasses();
+      } catch(err){
+        alert("Model load failed. Serve files via HTTP (e.g., python -m http.server). Error in console.");
+        console.error(err);
+        startBtn.disabled = false;
+        startBtn.innerText = "Start Webcam & Model";
+        return;
       }
-    }catch(err){
-      console.error(err);
-      setStatus('upload error');
-      alert('Upload error: ' + (err.message || err));
+
+      // setup webcam
+      const flip = true;
+      webcam = new tmImage.Webcam(CAPTURE_WIDTH, CAPTURE_HEIGHT, flip);
+      await webcam.setup();
+      await webcam.play();
+
+      // clear container and append canvas
+      webcamContainer.querySelectorAll("canvas").forEach(n => n.remove());
+      webcamContainer.appendChild(webcam.canvas);
+
+      // prepare labels
+      labelContainer.innerHTML = "";
+      for(let i=0;i<maxPredictions;i++){
+        const div = document.createElement("div");
+        div.className = "predRow";
+        div.innerHTML = `<span id="pn_${i}">—</span><span id="pp_${i}">—</span>`;
+        labelContainer.appendChild(div);
+      }
+
+      running = true;
+      stopBtn.style.display = "inline-block";
+      startBtn.innerText = "Running";
+
+      // start render loop
+      window.requestAnimationFrame(loop);
+
+      // start capture scheduler
+      scheduleNextCapture();
     }
-  }
+    // Show/Hide toggle for table
+        document.getElementById("toggleResultsBtn").addEventListener("click", () => {
+            const table = document.getElementById("label-table");
+            if (table.style.display === "none") {
+                table.style.display = "table";
+            } else {
+                table.style.display = "none";
+            }
+        });
 
-  // Event listeners
-  startBtn.addEventListener('click', startCamera);
-  stopBtn.addEventListener('click', stopCamera);
-  snapBtn.addEventListener('click', takeSnapshot);
-  downloadBtn.addEventListener('click', downloadSnapshot);
-  uploadBtn.addEventListener('click', uploadSnapshot);
+    function stopAll(){
+      running = false;
+      if (webcam) webcam.stop();
+      if (captureTimer) clearTimeout(captureTimer);
+      startBtn.disabled = false;
+      startBtn.innerText = "Start Webcam & Model";
+      stopBtn.style.display = "none";
+      topBox.style.display = "none";
+    }
 
-  // auto-start if on localhost (convenience)
-  if (location.hostname === 'localhost' || location.hostname === '127.0.0.1'){
-    startCamera().catch(()=>{});
-  }
+    async function loop(){
+      if (!running) return;
+      webcam.update();
+      await predict(false); // update live labels, but don't force show top box flash
+      window.requestAnimationFrame(loop);
+    }
 
-  // Clean up when leaving page
-  window.addEventListener('beforeunload', ()=>{
-    if (stream) stream.getTracks().forEach(t=>t.stop());
-  });
-</script>
+    async function predict(showTop=true){
+      if (!model) return;
+      const prediction = await model.predict(webcam.canvas);
+      let best = prediction[0];
+      for (let i=0;i<prediction.length;i++){
+        const name = prediction[i].className;
+        const prob = (prediction[i].probability * 100);
+        const elName = document.getElementById(`pn_${i}`);
+        const elProb = document.getElementById(`pp_${i}`);
+        if (elName) elName.innerText = name;
+        if (elProb) elProb.innerText = prob.toFixed(2) + "%";
+        if (prediction[i].probability > best.probability) best = prediction[i];
+      }
+      if (showTop && best){
+        showTopPrediction(best.className, (best.probability*100).toFixed(2));
+      }
+      return prediction;
+    }
+
+    function showTopPrediction(name, percent){
+      topLabel.innerText = name;
+      topPercent.innerText = percent + "%";
+      topTime.innerText = new Date().toLocaleTimeString();
+      topBox.style.display = "block";
+    }
+
+    // schedule next random capture
+    function scheduleNextCapture(){
+      if (!running) return;
+      const delay = Math.floor(Math.random() * (MAX_DELAY_MS - MIN_DELAY_MS + 1)) + MIN_DELAY_MS;
+      captureTimer = setTimeout(async ()=>{
+        // start scan animation, then capture after SCAN_DURATION_MS
+        startScanAnimation();
+        setTimeout(async ()=>{
+          await performCapture();    // actual capture
+          stopScanAnimation();
+          scheduleNextCapture();     // queue next
+        }, SCAN_DURATION_MS);
+      }, delay);
+    }
+
+    function startScanAnimation(){
+      scannerOverlay.classList.add("scanning");
+    }
+    function stopScanAnimation(){
+      scannerOverlay.classList.remove("scanning");
+    }
+
+    async function performCapture(){
+      if (!webcam || !model) return;
+      // compute fresh prediction
+      const prediction = await model.predict(webcam.canvas);
+      let best = prediction[0];
+      for (let i=1;i<prediction.length;i++){
+        if (prediction[i].probability > best.probability) best = prediction[i];
+      }
+
+      // flash effect
+      flashOverlay.classList.add("visible");
+      setTimeout(()=> flashOverlay.classList.remove("visible"), 200);
+
+      // snapshot
+      const off = document.createElement("canvas");
+      off.width = CAPTURE_WIDTH;
+      off.height = CAPTURE_HEIGHT;
+      const ctx = off.getContext("2d");
+      // draw current webcam canvas content
+      ctx.drawImage(webcam.canvas, 0, 0, off.width, off.height);
+      const dataURL = off.toDataURL("image/png");
+
+      // build capture card
+      const card = document.createElement("div");
+      card.className = "captureCard";
+      const img = document.createElement("img");
+      img.src = dataURL;
+      const meta = document.createElement("div");
+      meta.className = "meta";
+      const now = new Date();
+      const timeStr = now.toLocaleString();
+      const predText = best ? `${best.className} (${(best.probability*100).toFixed(2)}%)` : "—";
+      meta.innerHTML = `<strong>${predText}</strong><br><small>${timeStr}</small>`;
+
+      const dl = document.createElement("a");
+      dl.className = "downloadBtn";
+      dl.href = dataURL; dl.download = `leaf_capture_${now.getTime()}.png`;
+      dl.innerText = "Download";
+
+      card.appendChild(img);
+      card.appendChild(meta);
+      card.appendChild(dl);
+
+      // insert newest at top
+      gallery.insertBefore(card, gallery.firstChild);
+
+      // update top prediction box with capture info
+      showTopPrediction(best.className, (best.probability*100).toFixed(2));
+      topTime.innerText = timeStr;
+
+      // enforce gallery limit
+      while (gallery.childNodes.length > MAX_PHOTOS){
+        gallery.removeChild(gallery.lastChild);
+      }
+    }
+
+    // optional: clean up on page unload
+    window.addEventListener("beforeunload", ()=>{
+      if (webcam) try{ webcam.stop(); }catch(e){}
+    });
+
+  </script>
+
+  
 </body>
 </html>
