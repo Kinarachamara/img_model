@@ -364,13 +364,70 @@
 </script>
 
 <!-- AI Modal HTML (add inside <body>) -->
-<div id="aiModal" style="display:none; position:fixed; top:10%; left:50%; transform:translateX(-50%); width:320px; background:#fff; padding:12px; border-radius:8px; box-shadow:0 8px 20px rgba(0,0,0,0.2); z-index:999;">
-  <h3>Leaf Chat</h3>
-  <div id="aiChatContent" style="height:180px; overflow-y:auto; border:1px solid #ccc; padding:6px; margin-bottom:6px;"></div>
-  <input type="text" id="aiQuestion" placeholder="Ask about this leaf..." style="width:100%; padding:6px; margin-bottom:6px;">
-  <button onclick="modalSend(document.getElementById('aiQuestion').value, currentLeafName)">Send</button>
-  <button onclick="document.getElementById('aiModal').style.display='none';">Close</button>
+<div id="aiModal" style="
+    display:none;
+    position:fixed;
+    top:10%;
+    left:50%;
+    transform:translateX(-50%);
+    width:340px;
+    max-width:90%;
+    background:#f9f9f9;
+    padding:16px;
+    border-radius:12px;
+    box-shadow:0 12px 24px rgba(0,0,0,0.25);
+    z-index:999;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+">
+  <h3 style="margin-top:0; margin-bottom:10px; color:#4caf50; text-align:center;">Leaf Chat</h3>
+
+  <div id="aiChatContent" style="
+      height:180px;
+      overflow-y:auto;
+      border:1px solid #ccc;
+      border-radius:8px;
+      padding:8px;
+      margin-bottom:10px;
+      background:#fff;
+      scrollbar-width:thin;
+      scrollbar-color:#4caf50 #eee;
+  "></div>
+
+  <input type="text" id="aiQuestion" placeholder="Ask about this leaf..." style="
+      width:100%;
+      padding:8px;
+      margin-bottom:10px;
+      border:1px solid #ccc;
+      border-radius:8px;
+      outline:none;
+      transition:0.2s;
+  " onfocus="this.style.borderColor='#4caf50';" onblur="this.style.borderColor='#ccc';">
+
+  <div style="display:flex; gap:8px;">
+    <button onclick="modalSend(document.getElementById('aiQuestion').value, currentLeafName)" style="
+        flex:1;
+        padding:8px;
+        background:#4caf50;
+        color:#fff;
+        border:none;
+        border-radius:8px;
+        cursor:pointer;
+        transition:0.2s;
+    " onmouseover="this.style.background='#43a047';" onmouseout="this.style.background='#4caf50';">Send</button>
+
+    <button onclick="document.getElementById('aiModal').style.display='none';" style="
+        flex:1;
+        padding:8px;
+        background:#f44336;
+        color:#fff;
+        border:none;
+        border-radius:8px;
+        cursor:pointer;
+        transition:0.2s;
+    " onmouseover="this.style.background='#d32f2f';" onmouseout="this.style.background='#f44336';">Close</button>
+  </div>
 </div>
+
 
 </body>
 </html>
