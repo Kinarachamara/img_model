@@ -129,267 +129,248 @@
   <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@latest/dist/tf.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@teachablemachine/image@latest/dist/teachablemachine-image.min.js"></script>
 
-  <script>
-    // ---- CONFIG ----
-    const URL = "./";           // model folder path
-    const CAPTURE_WIDTH = 320;
-    const CAPTURE_HEIGHT = 320;
-    const MIN_DELAY_MS = 1;           // 1 ms
-    const MAX_DELAY_MS = 5000;           // 5 seconds
-    const MAX_PHOTOS = 6;               // gallery limit
-    const SCAN_DURATION_MS = 70;        // how long the scan animation runs before capture
-    // ----------------
+<script>
+  // ---- CONFIG ----
+  const URL = "./";           
+  const CAPTURE_WIDTH = 320;
+  const CAPTURE_HEIGHT = 320;
+  const MIN_DELAY_MS = 1;           
+  const MAX_DELAY_MS = 5000;           
+  const MAX_PHOTOS = 3;               
+  const SCAN_DURATION_MS = 70;        
 
-    // example stored details: you can expand this object with descriptions you want prefilled
-    const savedDetails = {
-      "Unknown Leaf": ["This leaf looks unfamiliar.", "Add notes here..."],
-      // add more keys as you like, e.g. "Ficus": ["Common houseplant", "Local name: ..."]
-    };
+  // state
+  let model, webcam, maxPredictions;
+  let running = false;
+  let captureTimer = null;
 
-    // state
-    let model, webcam, maxPredictions;
-    let running = false;
-    let captureTimer = null;
+  // elements
+  const startBtn = document.getElementById("startBtn");
+  const stopBtn  = document.getElementById("stopBtn");
+  const webcamContainer = document.getElementById("webcam-container");
+  const scannerOverlay = document.getElementById("scannerOverlay");
+  const flashOverlay = document.getElementById("flashOverlay");
+  const topBox = document.getElementById("topPredictionBox");
+  const topLabel = document.getElementById("topLabel");
+  const topPercent = document.getElementById("topPercent");
+  const topTime = document.getElementById("topTime");
+  const labelContainer = document.getElementById("label-container");
+  const gallery = document.getElementById("gallery");
+  document.getElementById("maxPhotosLabel").innerText = MAX_PHOTOS;
 
-    // elements
-    const startBtn = document.getElementById("startBtn");
-    const stopBtn  = document.getElementById("stopBtn");
-    const webcamContainer = document.getElementById("webcam-container");
-    const scannerOverlay = document.getElementById("scannerOverlay");
-    const flashOverlay = document.getElementById("flashOverlay");
-    const topBox = document.getElementById("topPredictionBox");
-    const topLabel = document.getElementById("topLabel");
-    const topPercent = document.getElementById("topPercent");
-    const topTime = document.getElementById("topTime");
-    const labelContainer = document.getElementById("label-container");
-    const gallery = document.getElementById("gallery");
-    const modalBackdrop = document.getElementById('modalBackdrop');
-    const modalTitle = document.getElementById('modalTitle');
-    const modalName = document.getElementById('modalName');
-    const modalPrevDetails = document.getElementById('modalPrevDetails');
-    const modalQuestion = document.getElementById('modalQuestion');
-    document.getElementById("maxPhotosLabel").innerText = MAX_PHOTOS;
+  startBtn.addEventListener("click", startAll);
+  stopBtn.addEventListener("click", stopAll);
 
-    startBtn.addEventListener("click", startAll);
-    stopBtn.addEventListener("click", stopAll);
+  // ---- Saved Details for Free AI ----
+  const savedDetails = {
+    "LeafA": { description: "LeafA is medicinal, grows in tropical areas.", uses: "Used in herbal teas and poultices.", extra: "Rich in antioxidants." },
+    "LeafB": { description: "LeafB is edible, used in salads.", uses: "Can be cooked or eaten raw.", extra: "High in vitamin C." },
+    "LeafC": { description: "LeafC is ornamental, popular in gardens.", uses: "Used for decoration.", extra: "Requires moderate sunlight." }
+  };
 
-    async function startAll(){
-      startBtn.disabled = true;
-      startBtn.innerText = "Loading model...";
-      try {
-        const modelURL = URL + "model.json";
-        const metadataURL = URL + "metadata.json";
-        model = await tmImage.load(modelURL, metadataURL);
-        maxPredictions = model.getTotalClasses();
-      } catch(err){
-        alert("Model load failed. Serve files via HTTP (e.g., python -m http.server). Error in console.");
-        console.error(err);
-        startBtn.disabled = false;
-        startBtn.innerText = "Start Webcam & Model";
-        return;
-      }
+  let currentLeafName = "";
 
-      const flip = true;
-      webcam = new tmImage.Webcam(CAPTURE_WIDTH, CAPTURE_HEIGHT, flip);
-      await webcam.setup();
-      await webcam.play();
-
-      webcamContainer.querySelectorAll("canvas").forEach(n => n.remove());
-      webcamContainer.appendChild(webcam.canvas);
-
-      labelContainer.innerHTML = "";
-      for(let i=0;i<maxPredictions;i++){
-        const div = document.createElement("div");
-        div.className = "predRow";
-        div.innerHTML = `<span id="pn_${i}">—</span><span id="pp_${i}">—</span>`;
-        labelContainer.appendChild(div);
-      }
-
-      running = true;
-      stopBtn.style.display = "inline-block";
-      startBtn.innerText = "Running";
-
-      window.requestAnimationFrame(loop);
-      scheduleNextCapture();
-    }
-
-    document.getElementById("toggleResultsBtn").addEventListener("click", () => {
-        const table = document.getElementById("label-table");
-        if (table.style.display === "none") { table.style.display = "table"; } else { table.style.display = "none"; }
-    });
-
-    function stopAll(){
-      running = false;
-      if (webcam) webcam.stop();
-      if (captureTimer) clearTimeout(captureTimer);
+  async function startAll(){
+    startBtn.disabled = true;
+    startBtn.innerText = "Loading model...";
+    try {
+      const modelURL = URL + "model.json";
+      const metadataURL = URL + "metadata.json";
+      model = await tmImage.load(modelURL, metadataURL);
+      maxPredictions = model.getTotalClasses();
+    } catch(err){
+      alert("Model load failed. Serve files via HTTP (e.g., python -m http.server). Error in console.");
+      console.error(err);
       startBtn.disabled = false;
       startBtn.innerText = "Start Webcam & Model";
-      stopBtn.style.display = "none";
-      topBox.style.display = "none";
+      return;
     }
 
-    async function loop(){
-      if (!running) return;
-      webcam.update();
-      await predict(false);
-      window.requestAnimationFrame(loop);
+    const flip = true;
+    webcam = new tmImage.Webcam(CAPTURE_WIDTH, CAPTURE_HEIGHT, flip);
+    await webcam.setup();
+    await webcam.play();
+
+    webcamContainer.querySelectorAll("canvas").forEach(n => n.remove());
+    webcamContainer.appendChild(webcam.canvas);
+
+    labelContainer.innerHTML = "";
+    for(let i=0;i<maxPredictions;i++){
+      const div = document.createElement("div");
+      div.className = "predRow";
+      div.innerHTML = `<span id="pn_${i}">—</span><span id="pp_${i}">—</span>`;
+      labelContainer.appendChild(div);
     }
 
-    async function predict(showTop=true){
-      if (!model) return;
-      const prediction = await model.predict(webcam.canvas);
-      let best = prediction[0];
-      for (let i=0;i<prediction.length;i++){
-        const name = prediction[i].className;
-        const prob = (prediction[i].probability * 100);
-        const elName = document.getElementById(`pn_${i}`);
-        const elProb = document.getElementById(`pp_${i}`);
-        if (elName) elName.innerText = name;
-        if (elProb) elProb.innerText = prob.toFixed(2) + "%";
-        if (prediction[i].probability > best.probability) best = prediction[i];
-      }
-      if (showTop && best){ showTopPrediction(best.className, (best.probability*100).toFixed(2)); }
-      return prediction;
+    running = true;
+    stopBtn.style.display = "inline-block";
+    startBtn.innerText = "Running";
+
+    window.requestAnimationFrame(loop);
+    scheduleNextCapture();
+  }
+
+  document.getElementById("toggleResultsBtn").addEventListener("click", () => {
+      const table = document.getElementById("label-table");
+      table.style.display = (table.style.display === "none") ? "table" : "none";
+  });
+
+  function stopAll(){
+    running = false;
+    if (webcam) webcam.stop();
+    if (captureTimer) clearTimeout(captureTimer);
+    startBtn.disabled = false;
+    startBtn.innerText = "Start Webcam & Model";
+    stopBtn.style.display = "none";
+    topBox.style.display = "none";
+  }
+
+  async function loop(){
+    if (!running) return;
+    webcam.update();
+    await predict(false);
+    window.requestAnimationFrame(loop);
+  }
+
+  async function predict(showTop=true){
+    if (!model) return;
+    const prediction = await model.predict(webcam.canvas);
+    let best = prediction[0];
+    for (let i=0;i<prediction.length;i++){
+      const name = prediction[i].className;
+      const prob = (prediction[i].probability * 100);
+      const elName = document.getElementById(`pn_${i}`);
+      const elProb = document.getElementById(`pp_${i}`);
+      if (elName) elName.innerText = name;
+      if (elProb) elProb.innerText = prob.toFixed(2) + "%";
+      if (prediction[i].probability > best.probability) best = prediction[i];
     }
-
-    function showTopPrediction(name, percent){
-      topLabel.innerText = name;
-      topPercent.innerText = percent + "%";
-      topTime.innerText = new Date().toLocaleTimeString();
-      topBox.style.display = "block";
-    }
-
-    function scheduleNextCapture(){
-      if (!running) return;
-      const delay = Math.floor(Math.random() * (MAX_DELAY_MS - MIN_DELAY_MS + 1)) + MIN_DELAY_MS;
-      captureTimer = setTimeout(async ()=>{
-        startScanAnimation();
-        setTimeout(async ()=>{
-          await performCapture();
-          stopScanAnimation();
-          scheduleNextCapture();
-        }, SCAN_DURATION_MS);
-      }, delay);
-    }
-
-    function startScanAnimation(){ scannerOverlay.classList.add("scanning"); }
-    function stopScanAnimation(){ scannerOverlay.classList.remove("scanning"); }
-
-    async function performCapture(){
-      if (!webcam || !model) return;
-      const prediction = await model.predict(webcam.canvas);
-      let best = prediction[0];
-      for (let i=1;i<prediction.length;i++){ if (prediction[i].probability > best.probability) best = prediction[i]; }
-
-      flashOverlay.classList.add("visible");
-      setTimeout(()=> flashOverlay.classList.remove("visible"), 200);
-
-      const off = document.createElement("canvas");
-      off.width = CAPTURE_WIDTH; off.height = CAPTURE_HEIGHT;
-      const ctx = off.getContext("2d");
-      ctx.drawImage(webcam.canvas, 0, 0, off.width, off.height);
-      const dataURL = off.toDataURL("image/png");
-
-      const card = document.createElement("div");
-      card.className = "captureCard";
-
-      const img = document.createElement("img");
-      img.src = dataURL;
-
-      const meta = document.createElement("div");
-      meta.className = "meta";
-      const now = new Date();
-      const timeStr = now.toLocaleString();
-      const predText = best ? `${best.className} (${(best.probability*100).toFixed(2)}%)` : "—";
-      meta.innerHTML = `<strong>${predText}</strong><br><small>${timeStr}</small>`;
-
-      // ASK AI button (replaces download button)
-      const askBtn = document.createElement("button");
-      askBtn.className = "downloadBtn"; // keep same style
-      askBtn.type = "button";
-      askBtn.innerText = "ASK AI";
-
-      // store data attributes on card for later use
-      card.dataset.pred = best ? best.className : "Unknown";
-      card.dataset.predProb = best ? (best.probability*100).toFixed(2) : "0";
-      card.dataset.img = dataURL;
-      card.appendChild(img);
-      card.appendChild(meta);
-      card.appendChild(askBtn);
-
-      // insert newest at top
-      gallery.insertBefore(card, gallery.firstChild);
-
-      // update top prediction box
+    if (showTop && best){
       showTopPrediction(best.className, (best.probability*100).toFixed(2));
-      topTime.innerText = timeStr;
+    }
+    return prediction;
+  }
 
-      // enforce gallery limit
-      while (gallery.childNodes.length > MAX_PHOTOS){ gallery.removeChild(gallery.lastChild); }
+  function showTopPrediction(name, percent){
+    topLabel.innerText = name;
+    topPercent.innerText = percent + "%";
+    topTime.innerText = new Date().toLocaleTimeString();
+    topBox.style.display = "block";
+  }
 
-      // attach click handler AFTER appending to DOM
-      askBtn.addEventListener('click', ()=> openAskModal(card));
+  function scheduleNextCapture(){
+    if (!running) return;
+    const delay = Math.floor(Math.random() * (MAX_DELAY_MS - MIN_DELAY_MS + 1)) + MIN_DELAY_MS;
+    captureTimer = setTimeout(async ()=>{
+      startScanAnimation();
+      setTimeout(async ()=>{
+        await performCapture();
+        stopScanAnimation();
+        scheduleNextCapture();
+      }, SCAN_DURATION_MS);
+    }, delay);
+  }
+
+  function startScanAnimation(){ scannerOverlay.classList.add("scanning"); }
+  function stopScanAnimation(){ scannerOverlay.classList.remove("scanning"); }
+
+  async function performCapture(){
+    if (!webcam || !model) return;
+    const prediction = await model.predict(webcam.canvas);
+    let best = prediction[0];
+    for (let i=1;i<prediction.length;i++){
+      if (prediction[i].probability > best.probability) best = prediction[i];
     }
 
-    // Open modal and prefill fields using card dataset
-    function openAskModal(card){
-      const name = card.dataset.pred || '';
-      const prob = card.dataset.predProb || '';
-      const img = card.dataset.img || '';
-      modalTitle.innerText = `Ask AI about — ${name}`;
-      modalName.value = name;
+    flashOverlay.classList.add("visible");
+    setTimeout(()=> flashOverlay.classList.remove("visible"), 200);
 
-      // build previous details from savedDetails map and capture metadata
-      modalPrevDetails.innerHTML = '';
-      const prev = savedDetails[name] || [];
-      if (prev.length === 0){
-        // show some default capture info
-        const d1 = document.createElement('div'); d1.className='chatMsg system'; d1.innerText = `Captured prediction: ${name} (${prob}%)`;
-        modalPrevDetails.appendChild(d1);
-      } else {
-        prev.forEach(p => { const d = document.createElement('div'); d.className='chatMsg system'; d.innerText = p; modalPrevDetails.appendChild(d); });
-      }
+    const off = document.createElement("canvas");
+    off.width = CAPTURE_WIDTH;
+    off.height = CAPTURE_HEIGHT;
+    const ctx = off.getContext("2d");
+    ctx.drawImage(webcam.canvas, 0, 0, off.width, off.height);
+    const dataURL = off.toDataURL("image/png");
 
-      // prefill question area with a starter prompt that includes the name
-      modalQuestion.value = `Tell me about ${name}. Key features, local names, and care instructions (if a plant).`;
+    const card = document.createElement("div");
+    card.className = "captureCard";
+    const img = document.createElement("img");
+    img.src = dataURL;
+    const meta = document.createElement("div");
+    meta.className = "meta";
+    const now = new Date();
+    const timeStr = now.toLocaleString();
+    const predText = best ? `${best.className} (${(best.probability*100).toFixed(2)}%)` : "—";
+    meta.innerHTML = `<strong>${predText}</strong><br><small>${timeStr}</small>`;
 
-      // show modal
-      modalBackdrop.style.display = 'flex';
+    const dl = document.createElement("a");
+    dl.className = "downloadBtn";
+    dl.href = "#"; 
+    dl.innerText = "ASK AI";
+    dl.onclick = ()=>openAIModal(best.className);
 
-      // scroll chat area to bottom
-      modalPrevDetails.scrollTop = modalPrevDetails.scrollHeight;
+    card.appendChild(img);
+    card.appendChild(meta);
+    card.appendChild(dl);
+
+    gallery.insertBefore(card, gallery.firstChild);
+
+    showTopPrediction(best.className, (best.probability*100).toFixed(2));
+    topTime.innerText = timeStr;
+
+    while (gallery.childNodes.length > MAX_PHOTOS){
+      gallery.removeChild(gallery.lastChild);
+    }
+  }
+
+  window.addEventListener("beforeunload", ()=>{ if (webcam) try{ webcam.stop(); }catch(e){} });
+
+  // ---- Modal AI functions ----
+  function openAIModal(name){
+    currentLeafName = name;
+    const modal = document.getElementById('aiModal');
+    modal.style.display = 'block';
+
+    const chatBox = document.getElementById("aiChatContent");
+    chatBox.innerHTML = "";
+
+    const info = savedDetails[name];
+    if(info){
+      chatBox.innerHTML = `
+        <div><strong>Description:</strong> ${info.description}</div>
+        <div><strong>Uses:</strong> ${info.uses}</div>
+        <div><strong>Extra:</strong> ${info.extra}</div>
+      `;
+    } else {
+      chatBox.innerHTML = `<div>No info available for ${name}</div>`;
     }
 
-    // modal controls
-    document.getElementById('modalClose').addEventListener('click', ()=>{ modalBackdrop.style.display='none'; });
-    document.getElementById('modalSend').addEventListener('click', ()=>{
-      const name = modalName.value.trim();
-      const question = modalQuestion.value.trim();
-      if (!question){ alert('Please type a question or feedback for the AI.'); return; }
+    document.getElementById('aiQuestion').value = `Tell me more about ${name}`;
+  }
 
-      // simulate sending to AI: append the user's message to prev details as chat
-      const userMsg = document.createElement('div'); userMsg.className='chatMsg'; userMsg.innerText = `You: ${question}`;
-      modalPrevDetails.appendChild(userMsg);
+  function modalSend(question, name){
+    const info = savedDetails[name];
+    const simulatedReply = info 
+      ? `💡 Answer from saved info: ${info.description} Uses: ${info.uses}. Extra: ${info.extra}` 
+      : `No info available for ${name}`;
 
-      // fake AI response (placeholder) — replace this with real API call if you integrate with a backend
-      const aiMsg = document.createElement('div'); aiMsg.className='chatMsg system'; aiMsg.innerText = `AI (simulated): I received your question about "${name}". (Integrate with AI backend to get real answers.)`;
-      modalPrevDetails.appendChild(aiMsg);
+    const chatBox = document.getElementById("aiChatContent");
+    const div = document.createElement("div");
+    div.innerHTML = `<strong>AI:</strong> ${simulatedReply}`;
+    chatBox.appendChild(div);
+    chatBox.scrollTop = chatBox.scrollHeight;
+  }
 
-      // optionally store the details in savedDetails under that name
-      if (!savedDetails[name]) savedDetails[name] = [];
-      savedDetails[name].push(`User asked: ${question}`);
-      savedDetails[name].push(`AI answered (simulated) at ${new Date().toLocaleString()}`);
+</script>
 
-      // clear question box and keep modal open so user sees response
-      modalQuestion.value = '';
-      modalPrevDetails.scrollTop = modalPrevDetails.scrollHeight;
-    });
+<!-- AI Modal HTML (add inside <body>) -->
+<div id="aiModal" style="display:none; position:fixed; top:10%; left:50%; transform:translateX(-50%); width:320px; background:#fff; padding:12px; border-radius:8px; box-shadow:0 8px 20px rgba(0,0,0,0.2); z-index:999;">
+  <h3>Leaf Chat</h3>
+  <div id="aiChatContent" style="height:180px; overflow-y:auto; border:1px solid #ccc; padding:6px; margin-bottom:6px;"></div>
+  <input type="text" id="aiQuestion" placeholder="Ask about this leaf..." style="width:100%; padding:6px; margin-bottom:6px;">
+  <button onclick="modalSend(document.getElementById('aiQuestion').value, currentLeafName)">Send</button>
+  <button onclick="document.getElementById('aiModal').style.display='none';">Close</button>
+</div>
 
-    // optional: close modal when clicking backdrop outside modal
-    modalBackdrop.addEventListener('click', (e)=>{ if (e.target === modalBackdrop) modalBackdrop.style.display='none'; });
-
-    // cleanup on unload
-    window.addEventListener("beforeunload", ()=>{ if (webcam) try{ webcam.stop(); }catch(e){} });
-  </script>
 </body>
 </html>
