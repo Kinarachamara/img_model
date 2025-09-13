@@ -1,0 +1,226 @@
+<!--
+Simple Webcam Capture + Upload page
+Features:
+- Requests camera permission and shows live preview
+- Start / Stop camera
+- Take snapshot and download
+- Upload snapshot to your server via POST /upload (multipart/form-data)
+- Shows status and last uploaded filename returned by server
+
+Hosting notes:
+- getUserMedia requires HTTPS or localhost. To test locally, open http://localhost using a simple static server (python -m http.server) or serve over HTTPS in production.
+- Server must accept multipart/form-data under the field name "photo". Example server-side snippet (Node/Express + multer) is provided at the bottom of this file.
+
+How to use on your server:
+1. Put this file (webcam-uploader.html) in your web server's document root.
+2. Ensure your server listens over HTTPS (recommended) or access via localhost.
+3. Implement a server endpoint POST /upload that accepts the uploaded file and returns JSON { success: true, filename: "..." }.
+
+-->
+
+<!doctype html>
+<html lang="si">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Webcam Capture & Upload</title>
+  <style>
+    :root{ --bg:#0f172a; --card:#0b1220; --accent:#3b82f6; --muted:#94a3b8; }
+    body{ font-family: system-ui, -apple-system, 'Segoe UI', Roboto, 'Noto Sans', sans-serif; background:linear-gradient(180deg,#071025 0%, #081225 100%); color: #e6eef8; margin:0; min-height:100vh; display:flex; align-items:center; justify-content:center; padding:24px; }
+    .card{ background:rgba(255,255,255,0.03); border-radius:12px; padding:18px; width:920px; max-width:calc(100% - 48px); box-shadow: 0 8px 30px rgba(2,6,23,0.6); }
+    .row{ display:flex; gap:12px; align-items:flex-start; }
+    video, canvas{ border-radius:8px; background:#000; max-width:100%; }
+    video{ width:480px; height:360px; object-fit:cover; }
+    canvas{ width:480px; height:360px; display:none; }
+    .controls{ flex:1; }
+    button{ background:var(--accent); color:#021024; border:none; padding:10px 12px; border-radius:8px; cursor:pointer; font-weight:600; margin:6px 6px 6px 0; }
+    button.secondary{ background:transparent; color:var(--muted); border:1px solid rgba(255,255,255,0.06); }
+    label{ display:block; margin-top:8px; color:var(--muted); font-size:13px; }
+    .status{ margin-top:12px; color:var(--muted); font-size:13px; }
+    .small{ font-size:13px; color:var(--muted); }
+    .hidden{ display:none; }
+    .input-row{ display:flex; gap:8px; margin-top:8px; align-items:center; }
+    input[type="text"]{ padding:8px 10px; border-radius:8px; border:1px solid rgba(255,255,255,0.04); background:transparent; color:inherit; }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <h2>Webcam Capture & Upload</h2>
+    <p class="small">ඔබේ කැමරාවට ප්‍රවේශ වීම, ඡායාරූපයක් ගන්නා අතරම server එකට POST කිරීමට මේ පිටුව භාවිතා කරන්න.</p>
+
+    <div class="row" style="margin-top:12px;">
+      <div>
+        <video id="video" autoplay playsinline></video>
+        <canvas id="canvas"></canvas>
+        <div style="margin-top:8px;">
+          <button id="startBtn">Start Camera</button>
+          <button id="stopBtn" class="secondary" disabled>Stop Camera</button>
+        </div>
+      </div>
+
+      <div class="controls">
+        <div class="input-row">
+          <button id="snapBtn">Take Snapshot</button>
+          <button id="downloadBtn" class="secondary" disabled>Download</button>
+          <button id="uploadBtn" class="secondary" disabled>Upload to Server</button>
+        </div>
+
+        <label>Server upload URL</label>
+        <input id="uploadUrl" type="text" value="/upload" placeholder="https://example.com/upload" />
+
+        <label>Filename prefix (optional)</label>
+        <input id="fnamePrefix" type="text" placeholder="e.g. cam1_" />
+
+        <div class="status" id="status">Status: <span id="statusText">idle</span></div>
+
+        <hr style="margin:12px 0;border:0;border-top:1px solid rgba(255,255,255,0.03);" />
+
+        <div id="lastResult" class="small">Last upload: <em>none</em></div>
+
+        <details style="margin-top:12px;color:var(--muted);">
+          <summary>Server example (Node/Express)</summary>
+          <pre style="white-space:pre-wrap;font-size:12px;color:#cfe7ff;padding:8px;background:rgba(255,255,255,0.02);border-radius:6px;">
+// npm i express multer
+
+const express = require('express');
+const multer = require('multer');
+const path = require('path');
+const UPLOAD_DIR = path.join(__dirname, 'uploads');
+const storage = multer.diskStorage({ destination: UPLOAD_DIR, filename: (req, file, cb) => cb(null, Date.now() + '-' + file.originalname) });
+const upload = multer({ storage });
+const app = express();
+
+app.post('/upload', upload.single('photo'), (req, res) => {
+  if (!req.file) return res.status(400).json({ success: false, error: 'no file' });
+  res.json({ success: true, filename: req.file.filename, path: '/uploads/' + req.file.filename });
+});
+
+app.use('/uploads', express.static(UPLOAD_DIR));
+app.use(express.static(path.join(__dirname, 'public')));
+app.listen(3000, ()=> console.log('Listening on http://localhost:3000'));
+          </pre>
+        </details>
+      </div>
+    </div>
+  </div>
+
+<script>
+  const video = document.getElementById('video');
+  const canvas = document.getElementById('canvas');
+  const startBtn = document.getElementById('startBtn');
+  const stopBtn = document.getElementById('stopBtn');
+  const snapBtn = document.getElementById('snapBtn');
+  const downloadBtn = document.getElementById('downloadBtn');
+  const uploadBtn = document.getElementById('uploadBtn');
+  const statusText = document.getElementById('statusText');
+  const lastResult = document.getElementById('lastResult');
+  const uploadUrlInput = document.getElementById('uploadUrl');
+  const fnamePrefix = document.getElementById('fnamePrefix');
+
+  let stream = null;
+  let latestBlob = null;
+
+  function setStatus(s){ statusText.textContent = s; }
+
+  async function startCamera(){
+    try{
+      setStatus('requesting permission...');
+      stream = await navigator.mediaDevices.getUserMedia({ video: { width: { ideal: 1280 }, height: { ideal: 720 } }, audio: false });
+      video.srcObject = stream;
+      video.play();
+      setStatus('camera started');
+      stopBtn.disabled = false;
+      startBtn.disabled = true;
+    }catch(err){
+      console.error(err);
+      setStatus('error: ' + (err.message || err));
+      alert('Camera access failed: ' + (err.message || err));
+    }
+  }
+
+  function stopCamera(){
+    if (!stream) return;
+    stream.getTracks().forEach(t=>t.stop());
+    video.srcObject = null;
+    stream = null;
+    setStatus('camera stopped');
+    stopBtn.disabled = true;
+    startBtn.disabled = false;
+  }
+
+  function takeSnapshot(){
+    if (!video || video.readyState < 2){ alert('Camera not ready'); return; }
+    const w = video.videoWidth;
+    const h = video.videoHeight;
+    canvas.width = w;
+    canvas.height = h;
+    const ctx = canvas.getContext('2d');
+    ctx.drawImage(video, 0, 0, w, h);
+    canvas.style.display = 'block';
+
+    // turn canvas into Blob
+    canvas.toBlob(blob => {
+      latestBlob = blob;
+      downloadBtn.disabled = false;
+      uploadBtn.disabled = false;
+      setStatus('snapshot ready');
+    }, 'image/jpeg', 0.92);
+  }
+
+  function downloadSnapshot(){
+    if (!latestBlob) return alert('No snapshot');
+    const a = document.createElement('a');
+    const name = (fnamePrefix.value || '') + 'snapshot-' + Date.now() + '.jpg';
+    a.href = URL.createObjectURL(latestBlob);
+    a.download = name;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    setStatus('download started');
+  }
+
+  async function uploadSnapshot(){
+    if (!latestBlob) return alert('No snapshot to upload');
+    const uploadUrl = uploadUrlInput.value || '/upload';
+    setStatus('uploading...');
+    const form = new FormData();
+    const filename = (fnamePrefix.value || '') + 'snapshot-' + Date.now() + '.jpg';
+    form.append('photo', latestBlob, filename);
+
+    try{
+      const resp = await fetch(uploadUrl, { method: 'POST', body: form });
+      if(!resp.ok) throw new Error('server returned ' + resp.status);
+      const data = await resp.json();
+      if (data.success){
+        lastResult.innerHTML = 'Last upload: <strong>' + (data.filename || data.path || 'uploaded') + '</strong>';
+        setStatus('upload successful');
+      } else {
+        setStatus('upload failed');
+        alert('Upload failed: ' + (data.error || JSON.stringify(data)));
+      }
+    }catch(err){
+      console.error(err);
+      setStatus('upload error');
+      alert('Upload error: ' + (err.message || err));
+    }
+  }
+
+  // Event listeners
+  startBtn.addEventListener('click', startCamera);
+  stopBtn.addEventListener('click', stopCamera);
+  snapBtn.addEventListener('click', takeSnapshot);
+  downloadBtn.addEventListener('click', downloadSnapshot);
+  uploadBtn.addEventListener('click', uploadSnapshot);
+
+  // auto-start if on localhost (convenience)
+  if (location.hostname === 'localhost' || location.hostname === '127.0.0.1'){
+    startCamera().catch(()=>{});
+  }
+
+  // Clean up when leaving page
+  window.addEventListener('beforeunload', ()=>{
+    if (stream) stream.getTracks().forEach(t=>t.stop());
+  });
+</script>
+</body>
+</html>
