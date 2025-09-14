@@ -11,32 +11,94 @@
       }
 
       body{ font-family: Arial, sans-serif;
-        background: var(--bg); 
+        background: 
+        var(--bg); 
         color:#222; 
         margin:1px; 
         text-align:center; 
       }
 
       h1{ margin:6px 0 2px 0; }
-      p.lead{ margin:0 0 14px 0; color:#444; }
+      p.lead{ margin:0 0 14px 0; 
+        color:#444; 
+      }
 
+      /* Controls */
       #controls{ margin:12px 0; }
-      button{ background:var(--accent); color:#fff; border:none; padding:10px 14px; border-radius:8px; cursor:pointer; font-weight:600; margin:0 6px; }
-      button.stop{ background:#f44336; }
 
-      .wrap{ display:flex; gap:18px; justify-content:center; flex-wrap:wrap; align-items:flex-start; }
-      .previewCard{ width:340px; background:var(--card); border-radius:12px; padding:12px; box-shadow:0 8px 22px rgba(0,0,0,0.06); border:1px solid rgba(0,0,0,0.04); }
+      button{ background:var(--accent); 
+        color:#fff; 
+        border:none; 
+        padding:10px 14px; 
+        border-radius:8px; 
+        cursor:pointer; font-weight:600; 
+        margin:0 6px; }
+      button.stop{ background:#f44336; 
+      
+    }
 
-      #webcam-container{ width:320px; height:320px; margin:6px auto; position:relative; overflow:hidden; border-radius:8px; border:2px solid rgba(76,175,80,0.15); background:#000; }
-      #webcam-container canvas{ width:100%; height:100%; display:block; }
-      .scanner{ position:absolute; left:0; right:0; top:0; bottom:0; pointer-events:none; }
-      .scan-line{ position:absolute; left:-100%; right:-10%; height:400px; top:0; background: linear-gradient(180deg, rgba(255, 0, 0, 0) 0%, rgba(0, 119, 255, 0.15) 45%, rgba(255,255,255,0.25) 55%, rgba(255,255,255,0) 100%); transform:translateY(-100%); filter: drop-shadow(0 6px 10px rgb(0, 0, 0)); }
+      /* layout */
+      .wrap{ display:flex; 
+        gap:18px; 
+        justify-content:center; 
+        flex-wrap:wrap; 
+        align-items:flex-start;
+      
+      }
+
+      .previewCard{ width:340px; 
+        background:var(--card); 
+        border-radius:12px; 
+        padding:12px; 
+        box-shadow:0 8px 22px rgba(0,0,0,0.06); 
+        border:1px solid rgba(0,0,0,0.04); 
+      
+      }
+
+      #webcam-container{ width:320px; 
+        height:320px; 
+        margin:6px auto; 
+        position:relative; 
+        overflow:hidden; 
+        border-radius:8px; 
+        border:2px solid rgba(76,175,80,0.15); 
+        background:#000; 
+      }
+
+      #webcam-container canvas{ width:100%; 
+        height:100%; 
+        display:block; 
+      
+      }
+      .scanner{ position:absolute; 
+        left:0; 
+        right:0; 
+        top:0; 
+        bottom:0; 
+        pointer-events:none; 
+      }
+      .scan-line{ position:absolute; 
+        left:-100%; 
+        right:-10%; 
+        height:400px; 
+        top:0; background: linear-gradient(180deg, rgba(255, 0, 0, 0) 0%, rgba(0, 119, 255, 0.15) 45%, rgba(255,255,255,0.25) 55%, rgba(255,255,255,0) 100%); transform:translateY(-100%); 
+        filter: drop-shadow(0 6px 10px rgb(0, 0, 0)); }
+
       .scanning .scan-line{ animation: scanMove 0.7s linear forwards; }
-      @keyframes scanMove { 0%{ transform:translateY(-120%); opacity:0; } 10%{ opacity:1; } 100%{ transform:translateY(120%); opacity:0; } }
 
-      .flash { position:absolute; left:0; right:0; top:0; bottom:0; background:white; opacity:0; pointer-events:none; transition: opacity 0.12s ease; }
+      @keyframes scanMove { 0%{ transform:translateY(-120%); 
+        opacity:0; } 10%{ opacity:1; } 100%{ transform:translateY(120%); opacity:0; } }
+
+      .flash { position:absolute; 
+        left:0; 
+        right:0; 
+        top:0;
+        bottom:0; 
+        background:white; 
+        opacity:0; pointer-events:none; 
+        transition: opacity 0.12s ease; }
+        
       .flash.visible{ opacity:0.7; }
-
       #label-container{ text-align:left; margin-top:8px; font-size:0.95rem; color:#222; }
       .predRow{ padding:4px 6px; border-radius:6px; margin:4px 0; background:rgba(0,0,0,0.02); display:flex; justify-content:space-between; align-items:center; }
       #topPredictionBox{ margin-top:10px; padding:10px; border-radius:10px; background:linear-gradient(180deg,#fff,#eafaf0); border:1px solid rgba(76,175,80,0.18); font-weight:700; display:none; text-align:left; }
@@ -48,6 +110,21 @@
       .captureCard img{ width:100%; height:110px; object-fit:cover; border-radius:6px; display:block; }
       .meta{ font-size:0.82rem; color:#333; margin-top:6px; }
       .downloadBtn{ display:inline-block; margin-top:6px; padding:6px 8px; border-radius:6px; background:var(--accent); color:#fff; text-decoration:none; font-size:0.82rem; }
+
+      /* modal */
+      .modal-backdrop{ position:fixed; left:0; top:0; right:0; bottom:0; background:rgba(0,0,0,0.45); display:none; align-items:center; justify-content:center; z-index:9999; }
+      .modal{ width:520px; max-width:95%; background:#fff; border-radius:12px; padding:14px; box-shadow:0 18px 40px rgba(0,0,0,0.25); }
+      .modal h3{ margin-top:0; }
+      .form-row{ margin:8px 0; text-align:left; }
+      .form-row label{ display:block; font-size:0.86rem; margin-bottom:6px; }
+      .form-row input[type="text"], .form-row textarea{ width:100%; padding:8px; border-radius:8px; border:1px solid #ddd; font-size:0.95rem; }
+      .modal .actions{ display:flex; gap:8px; justify-content:flex-end; margin-top:10px; }
+      .btn-secondary{ background:#eee; color:#111; }
+
+      /* chat history area in modal */
+      .chatArea{ height:140px; overflow:auto; border:1px solid #eee; padding:8px; border-radius:8px; background:#fafafa; }
+      .chatMsg{ margin:6px 0; font-size:0.92rem; }
+      .chatMsg.system{ color:#555; font-style:italic; }
 
       @media (max-width:900px){ .wrap{ flex-direction:column; align-items:center; } .rightCol{ width:92%; } }
     </style>
@@ -95,6 +172,33 @@
     </div>
   </div>
 
+  <!-- modal for Ask AI / feedback -->
+  <div class="modal-backdrop" id="modalBackdrop">
+    <div class="modal" role="dialog" aria-modal="true">
+      <h3 id="modalTitle">Ask AI about —</h3>
+
+      <div class="form-row">
+        <label>Item name</label>
+        <input type="text" id="modalName" />
+      </div>
+
+      <div class="form-row">
+        <label>Previous details (system info)</label>
+        <div class="chatArea" id="modalPrevDetails"></div>
+      </div>
+
+      <div class="form-row">
+        <label>Your question / feedback</label>
+        <textarea id="modalQuestion" rows="3" placeholder="Type your question for the AI..."></textarea>
+      </div>
+
+      <div class="actions">
+        <button class="btn-secondary" id="modalClose">Close</button>
+        <button id="modalSend">Send to AI</button>
+      </div>
+    </div>
+  </div>
+
   <!-- TensorFlow.js & Teachable Machine -->
   <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@latest/dist/tf.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@teachablemachine/image@latest/dist/teachablemachine-image.min.js"></script>
@@ -113,7 +217,6 @@
   let model, webcam, maxPredictions;
   let running = false;
   let captureTimer = null;
-  let currentLeafName = "";
 
   // elements
   const startBtn = document.getElementById("startBtn");
@@ -131,6 +234,15 @@
 
   startBtn.addEventListener("click", startAll);
   stopBtn.addEventListener("click", stopAll);
+
+  // ---- Saved Details for Free AI ----
+  const savedDetails = {
+    "හැට්ට කට්ටක්": { description: "LeafA is medicinal, grows in tropical areas.", uses: "Used in herbal teas and poultices.", extra: "Rich in antioxidants." },
+    "pensil": { description: "LeafB is edible, used in salads.", uses: "Can be cooked or eaten raw.", extra: "High in vitamin C." },
+    "LeafC": { description: "LeafC is ornamental, popular in gardens.", uses: "Used for decoration.", extra: "Requires moderate sunlight." }
+  };
+
+  let currentLeafName = "";
 
   async function startAll(){
     startBtn.disabled = true;
@@ -290,20 +402,117 @@
   // ---- Modal AI functions ----
   function openAIModal(name){
     currentLeafName = name;
-    document.getElementById('aiModal').style.display = 'block';
-    document.getElementById("aiChatContent").innerHTML = "";
+    const modal = document.getElementById('aiModal');
+    modal.style.display = 'block';
+
+    const chatBox = document.getElementById("aiChatContent");
+    chatBox.innerHTML = "";
+
+    const info = savedDetails[name];
+    if(info){
+      chatBox.innerHTML = `
+        <div><strong>Description:</strong> ${info.description}</div>
+        <div><strong>Uses:</strong> ${info.uses}</div>
+        <div><strong>Extra:</strong> ${info.extra}</div>
+      `;
+    } else {
+      chatBox.innerHTML = `<div>No info available for ${name}</div>`;
+    }
+
     document.getElementById('aiQuestion').value = `Tell me more about ${name}`;
   }
 
-  // --- Hugging Face API Send ---
+  function modalSend(question, name){
+    const info = savedDetails[name];
+    const simulatedReply = info 
+      ? `💡 Answer from saved info: ${info.description} Uses: ${info.uses}. Extra: ${info.extra}` 
+      : `No info available for ${name}`;
+
+    const chatBox = document.getElementById("aiChatContent");
+    const div = document.createElement("div");
+    div.innerHTML = `<strong>AI:</strong> ${simulatedReply}`;
+    chatBox.appendChild(div);
+    chatBox.scrollTop = chatBox.scrollHeight;
+  }
+
+</script>
+
+<!-- AI Modal HTML (add inside <body>) -->
+<div id="aiModal" style="
+    display:none;
+    position:fixed;
+    top:10%;
+    left:50%;
+    transform:translateX(-50%);
+    width:340px;
+    max-width:90%;
+    background:#f9f9f9;
+    padding:16px;
+    border-radius:12px;
+    box-shadow:0 12px 24px rgba(0,0,0,0.25);
+    z-index:999;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+">
+  <h3 style="margin-top:0; margin-bottom:10px; color:#4caf50; text-align:center;">Leaf Chat</h3>
+
+  <div id="aiChatContent" style="
+      height:180px;
+      overflow-y:auto;
+      border:1px solid #ccc;
+      border-radius:8px;
+      padding:8px;
+      margin-bottom:10px;
+      background:#fff;
+      scrollbar-width:thin;
+      scrollbar-color:#4caf50 #eee;
+  "></div>
+
+  <input type="text" id="aiQuestion" placeholder="Ask about this leaf..." style="
+      width:100%;
+      padding:8px;
+      margin-bottom:10px;
+      border:1px solid #ccc;
+      border-radius:8px;
+      outline:none;
+      transition:0.2s;
+  " onfocus="this.style.borderColor='#4caf50';" onblur="this.style.borderColor='#ccc';">
+
+  <div style="display:flex; gap:8px;">
+    <button onclick="modalSend(document.getElementById('aiQuestion').value, currentLeafName)" style="
+        flex:1;
+        padding:8px;
+        background:#4caf50;
+        color:#fff;
+        border:none;
+        border-radius:8px;
+        cursor:pointer;
+        transition:0.2s;
+    " onmouseover="this.style.background='#43a047';" onmouseout="this.style.background='#4caf50';">Send</button>
+
+    <button onclick="document.getElementById('aiModal').style.display='none';" style="
+        flex:1;
+        padding:8px;
+        background:#f44336;
+        color:#fff;
+        border:none;
+        border-radius:8px;
+        cursor:pointer;
+        transition:0.2s;
+    " onmouseover="this.style.background='#d32f2f';" onmouseout="this.style.background='#f44336';">Close</button>
+  </div>
+</div>
+
+<script>
   async function modalSend(question, name){
     const chatBox = document.getElementById("aiChatContent");
 
+    // Show user's question
     const userMsg = document.createElement("div");
     userMsg.innerHTML = `<strong>You:</strong> ${question}`;
     chatBox.appendChild(userMsg);
     chatBox.scrollTop = chatBox.scrollHeight;
 
+    // Loading animation / placeholder
     const loading = document.createElement("div");
     loading.innerHTML = `<em>AI is typing...</em>`;
     chatBox.appendChild(loading);
@@ -320,7 +529,10 @@
         },
         body: JSON.stringify({
           inputs: prompt,
-          parameters: { max_new_tokens: 200, temperature: 0.7 }
+          parameters: {
+            max_new_tokens: 200,
+            temperature: 0.7
+          }
         })
       });
 
@@ -346,44 +558,5 @@
     }
   }
 </script>
-
-<!-- AI Modal -->
-<div id="aiModal" style="
-    display:none;
-    position:fixed;
-    top:10%;
-    left:50%;
-    transform:translateX(-50%);
-    width:340px;
-    max-width:90%;
-    background:#f9f9f9;
-    padding:16px;
-    border-radius:12px;
-    box-shadow:0 12px 24px rgba(0,0,0,0.25);
-    z-index:999;">
-  <h3 style="margin-top:0; margin-bottom:10px; color:#4caf50; text-align:center;">Leaf Chat</h3>
-
-  <div id="aiChatContent" style="
-      height:180px;
-      overflow-y:auto;
-      border:1px solid #ccc;
-      border-radius:8px;
-      padding:8px;
-      margin-bottom:10px;
-      background:#fff;"></div>
-
-  <input type="text" id="aiQuestion" placeholder="Ask about this leaf..." style="
-      width:100%;
-      padding:8px;
-      margin-bottom:10px;
-      border:1px solid #ccc;
-      border-radius:8px;">
-
-  <div style="display:flex; gap:8px;">
-    <button onclick="modalSend(document.getElementById('aiQuestion').value, currentLeafName)" style="flex:1; padding:8px; background:#4caf50; color:#fff; border:none; border-radius:8px; cursor:pointer;">Send</button>
-    <button onclick="document.getElementById('aiModal').style.display='none';" style="flex:1; padding:8px; background:#f44336; color:#fff; border:none; border-radius:8px; cursor:pointer;">Close</button>
-  </div>
-</div>
-
 </body>
 </html>
