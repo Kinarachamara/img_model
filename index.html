@@ -3,340 +3,504 @@
   <head>
     <meta charset="utf-8"/>
     <title>Leaf Recognition — Scan Capture (Ask AI)</title>
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
     <style>
-      :root { 
-        --accent: #4caf50; 
+      :root{ --accent: #4caf50; 
         --bg: #f4f9f4; 
         --card: #ffffff; 
       }
 
-      body { 
-        font-family: Arial, sans-serif;
-        background: var(--bg); 
-        color: #222; 
-        text-align: center; 
-        margin: 0; 
+      body{ font-family: Arial, sans-serif;
+        background: 
+        var(--bg); 
+        color:#222; 
+        text-align:center; 
       }
 
-      h1 { margin: 6px 0 2px 0; }
-      p.lead { margin: 0 0 14px 0; color: #444; }
+      h1{ margin:6px 0 2px 0; }
+      p.lead{ margin:0 0 14px 0; 
+        color:#444; 
+      }
 
       /* Controls */
-      #controls { margin: 12px 0; }
+      #controls{ margin:12px 0; }
 
-      button { 
-        background: var(--accent); 
-        color: #fff; 
-        border: none; 
-        padding: 10px 14px; 
-        border-radius: 8px; 
-        cursor: pointer; 
-        font-weight: 600; 
-        margin: 0 6px; 
-      }
-
-      button.stop { 
-        background: #f44336; 
-      }
+      button{ background:var(--accent); 
+        color:#fff; 
+        border:none; 
+        padding:10px 14px; 
+        border-radius:8px; 
+        cursor:pointer; font-weight:600; 
+        margin:0 6px; }
+      button.stop{ background:#f44336; 
+      
+    }
 
       /* layout */
-      .wrap { 
-        display: flex; 
-        gap: 18px; 
-        justify-content: center; 
-        flex-wrap: wrap; 
-        align-items: flex-start;
-        margin: 0 auto;
+      .wrap{ display:flex; 
+        gap:18px; 
+        justify-content:center; 
+        flex-wrap:wrap; 
+        align-items:flex-start;
+      
       }
 
-      .previewCard { 
-        width: 340px; 
-        background: var(--card); 
-        border-radius: 12px; 
-        padding: 12px; 
-        box-shadow: 0 8px 22px rgba(0, 0, 0, 0.06); 
-        border: 1px solid rgba(0, 0, 0, 0.04); 
+      .previewCard{ width:340px; 
+        background:var(--card); 
+        border-radius:12px; 
+        padding:12px; 
+        box-shadow:0 8px 22px rgba(0,0,0,0.06); 
+        border:1px solid rgba(0,0,0,0.04); 
+      
       }
 
-      #webcam-container { 
-        width: 320px; 
-        height: 320px; 
-        margin: 6px auto; 
-        position: relative; 
-        overflow: hidden; 
-        border-radius: 8px; 
-        border: 2px solid rgba(76, 175, 80, 0.15); 
-        background: #000; 
+      #webcam-container{ width:320px; 
+        height:320px; 
+        margin:6px auto; 
+        position:relative; 
+        overflow:hidden; 
+        border-radius:8px; 
+        border:2px solid rgba(76,175,80,0.15); 
+        background:#000; 
       }
 
-      #webcam-container canvas { 
-        width: 100%; 
-        height: 100%; 
-        display: block; 
+      #webcam-container canvas{ width:100%; 
+        height:100%; 
+        display:block; 
+      
       }
-
-      .scanner { 
-        position: absolute; 
-        left: 0; 
-        right: 0; 
-        top: 0; 
-        bottom: 0; 
-        pointer-events: none; 
+      .scanner{ position:absolute; 
+        left:0; 
+        right:0; 
+        top:0; 
+        bottom:0; 
+        pointer-events:none; 
       }
+      .scan-line{ position:absolute; 
+        left:-100%; 
+        right:-10%; 
+        height:400px; 
+        top:0; background: linear-gradient(180deg, rgba(255, 0, 0, 0) 0%, rgba(0, 119, 255, 0.15) 45%, rgba(255,255,255,0.25) 55%, rgba(255,255,255,0) 100%); transform:translateY(-100%); 
+        filter: drop-shadow(0 6px 10px rgb(0, 0, 0)); }
 
-      .scan-line { 
-        position: absolute; 
-        left: -100%; 
-        right: -10%; 
-        height: 400px; 
-        top: 0; 
-        background: linear-gradient(180deg, rgba(255, 0, 0, 0) 0%, rgba(0, 119, 255, 0.15) 45%, rgba(255, 255, 255, 0.25) 55%, rgba(255, 255, 255, 0) 100%); 
-        transform: translateY(-100%); 
-        filter: drop-shadow(0 6px 10px rgb(0, 0, 0)); 
-      }
+      .scanning .scan-line{ animation: scanMove 0.7s linear forwards; }
 
-      .scanning .scan-line { 
-        animation: scanMove 0.7s linear forwards; 
-      }
+      @keyframes scanMove { 0%{ transform:translateY(-120%); 
+        opacity:0; } 10%{ opacity:1; } 100%{ transform:translateY(120%); opacity:0; } }
 
-      @keyframes scanMove { 
-        0% { 
-          transform: translateY(-120%); 
-          opacity: 0; 
-        } 
-        10% { 
-          opacity: 1; 
-        } 
-        100% { 
-          transform: translateY(120%); 
-          opacity: 0; 
-        } 
-      }
-
-      .flash { 
-        position: absolute; 
-        left: 0; 
-        right: 0; 
-        top: 0; 
-        bottom: 0; 
-        background: white; 
-        opacity: 0; 
-        pointer-events: none; 
-        transition: opacity 0.12s ease; 
-      }
-
-      .flash.visible { 
-        opacity: 0.7; 
-      }
-
-      #topPredictionBox { 
-        margin-top: 10px; 
-        padding: 10px; 
-        border-radius: 10px; 
-        background: linear-gradient(180deg, #fff, #eafaf0); 
-        border: 1px solid rgba(76, 175, 80, 0.18); 
-        font-weight: 700; 
-        display: none; 
-        text-align: left; 
-      }
-
-      .rightCol { 
-        width: 540px; 
-        max-width: 90%; 
-      }
-
-      .galleryCard { 
-        background: var(--card); 
-        padding: 10px; 
-        border-radius: 10px; 
-        box-shadow: 0 6px 16px rgba(0, 0, 0, 0.06); 
-        border: 1px solid rgba(0, 0, 0, 0.04); 
-      }
-
-      #gallery { 
-        display: flex; 
-        flex-wrap: wrap; 
-        gap: 10px; 
-        justify-content: flex-start; 
-        margin-top: 10px; 
-      }
-
-      .captureCard { 
-        width: 160px; 
-        border-radius: 8px; 
-        overflow: hidden; 
-        background: #fff; 
-        border: 1px solid #eee; 
-        padding: 6px; 
-        text-align: center; 
-      }
-
-      .captureCard img { 
-        width: 100%; 
-        height: 110px; 
-        object-fit: cover; 
-        border-radius: 6px; 
-        display: block; 
-      }
-
-      .meta { 
-        font-size: 0.82rem; 
-        color: #333; 
-        margin-top: 6px; 
-      }
-
-      .downloadBtn { 
-        display: inline-block; 
-        margin-top: 6px; 
-        padding: 6px 8px; 
-        border-radius: 6px; 
-        background: var(--accent); 
-        color: #fff; 
-        text-decoration: none; 
-        font-size: 0.82rem; 
-      }
-
-      /* Modal styles */
-      .modal-backdrop { 
-        position: fixed; 
-        left: 0; 
-        top: 0; 
-        right: 0; 
-        bottom: 0; 
-        background: rgba(0, 0, 0, 0.45); 
-        display: none; 
-        align-items: center; 
-        justify-content: center; 
-        z-index: 9999; 
-      }
-
-      .modal { 
-        width: 520px; 
-        max-width: 95%; 
-        background: #fff; 
-        border-radius: 12px; 
-        padding: 14px; 
-        box-shadow: 0 18px 40px rgba(0, 0, 0, 0.25); 
-      }
-
-      .modal h3 { 
-        margin-top: 0; 
-      }
-
-      .form-row { 
-        margin: 8px 0; 
-        text-align: left; 
-      }
-
-      .form-row label { 
-        display: block; 
-        font-size: 0.86rem; 
-        margin-bottom: 6px; 
-      }
-
-      .form-row input[type="text"], .form-row textarea { 
-        width: 100%; 
-        padding: 8px; 
-        border-radius: 8px; 
-        border: 1px solid #ddd; 
-        font-size: 0.95rem; 
-      }
-
-      .modal .actions { 
-        display: flex; 
-        gap: 8px; 
-        justify-content: flex-end; 
-        margin-top: 10px; 
-      }
-
-      .btn-secondary { 
-        background: #eee; 
-        color: #111; 
-      }
-
-      /* Responsive Styles */
-      @media (max-width: 900px) { 
-        .wrap { 
-          flex-direction: column; 
-          align-items: center; 
-        }
+      .flash { position:absolute; 
+        left:0; 
+        right:0; 
+        top:0;
+        bottom:0; 
+        background:white; 
+        opacity:0; pointer-events:none; 
+        transition: opacity 0.12s ease; }
         
-        .rightCol { 
-          width: 92%; 
-        }
+      .flash.visible{ opacity:0.7; }
+      #label-container{ text-align:left; margin-top:8px; font-size:0.95rem; color:#222; }
+      .predRow{ padding:4px 6px; border-radius:6px; margin:4px 0; background:rgba(0,0,0,0.02); display:flex; justify-content:space-between; align-items:center; }
+      #topPredictionBox{ margin-top:10px; padding:10px; border-radius:10px; background:linear-gradient(180deg,#fff,#eafaf0); border:1px solid rgba(76,175,80,0.18); font-weight:700; display:none; text-align:left; }
 
-        .previewCard { 
-          width: 100%; 
-        }
+      .rightCol{ width:540px; max-width:90%; }
+      .galleryCard{ background:var(--card); padding:10px; border-radius:10px; box-shadow:0 6px 16px rgba(0,0,0,0.06); border:1px solid rgba(0,0,0,0.04); }
+      #gallery{ display:flex; flex-wrap:wrap; gap:10px; justify-content:flex-start; margin-top:10px; }
+      .captureCard{ width:160px; border-radius:8px; overflow:hidden; background:#fff; border:1px solid #eee; padding:6px; text-align:center; }
+      .captureCard img{ width:100%; height:110px; object-fit:cover; border-radius:6px; display:block; }
+      .meta{ font-size:0.82rem; color:#333; margin-top:6px; }
+      .downloadBtn{ display:inline-block; margin-top:6px; padding:6px 8px; border-radius:6px; background:var(--accent); color:#fff; text-decoration:none; font-size:0.82rem; }
 
-        #webcam-container { 
-          width: 100%; 
-          height: 100%; 
-        }
+      /* modal */
+      .modal-backdrop{ position:fixed; left:0; top:0; right:0; bottom:0; background:rgba(0,0,0,0.45); display:none; align-items:center; justify-content:center; z-index:9999; }
+      .modal{ width:520px; max-width:95%; background:#fff; border-radius:12px; padding:14px; box-shadow:0 18px 40px rgba(0,0,0,0.25); }
+      .modal h3{ margin-top:0; }
+      .form-row{ margin:8px 0; text-align:left; }
+      .form-row label{ display:block; font-size:0.86rem; margin-bottom:6px; }
+      .form-row input[type="text"], .form-row textarea{ width:100%; padding:8px; border-radius:8px; border:1px solid #ddd; font-size:0.95rem; }
+      .modal .actions{ display:flex; gap:8px; justify-content:flex-end; margin-top:10px; }
+      .btn-secondary{ background:#eee; color:#111; }
 
-        #gallery { 
-          justify-content: center; 
-        }
-      }
+      /* chat history area in modal */
+      .chatArea{ height:140px; overflow:auto; border:1px solid #eee; padding:8px; border-radius:8px; background:#fafafa; }
+      .chatMsg{ margin:6px 0; font-size:0.92rem; }
+      .chatMsg.system{ color:#555; font-style:italic; }
+
+      @media (max-width:900px){ .wrap{ flex-direction:column; align-items:center; } .rightCol{ width:92%; } }
     </style>
   </head>
-  <body>
-    <h1>Leaf Recognition</h1>
-    <p class="lead">Scan the leaf for recognition</p>
-    <div id="controls">
-      <button class="start" onclick="startScan()">Start Scan</button>
-      <button class="stop" onclick="stopScan()">Stop Scan</button>
+
+<body>
+  <h1>Leaf Recognition</h1>
+  <p class="lead">Camara preview</p>
+
+  <div id="controls">
+    <button id="startBtn">Start Webcam & Model</button>
+    <button id="stopBtn" class="stop" style="display:none;">Stop</button>
+  </div>
+
+  <div class="wrap">
+    <div class="previewCard">
+      <div id="webcam-container">
+        <div class="scanner" id="scannerOverlay"><div class="scan-line"></div></div>
+        <div class="flash" id="flashOverlay"></div>
+      </div>
+
+      <div id="topPredictionBox"><span id="topLabel">—</span><span style="float:right;font-weight:800;" id="topPercent">—</span>
+        <div style="clear:both; margin-top:6px; font-size:0.9rem; color:#444;">Captured at: <span id="topTime">—</span></div>
+      </div>
+      <br>
+      <button id="toggleResultsBtn">👁 Show/Hide Results</button>
+      <table id="label-table" style="margin: 10px auto; border-collapse: collapse; display: table;">
+          <thead>
+              <tr>
+                  <th style="border:1px solid #ccc; padding:5px;">Details</th>
+              </tr>
+          </thead>
+          <tbody id="label-container"></tbody>
+      </table>
+
+      <div id="label-container"></div>
     </div>
 
-    <div class="wrap">
-      <div class="previewCard">
-        <div id="webcam-container">
-          <canvas id="webcam-canvas"></canvas>
-          <div class="scanner scanning">
-            <div class="scan-line"></div>
-          </div>
-          <div class="flash"></div>
-        </div>
-        <div id="topPredictionBox">Predicted Leaf: <span id="prediction"></span></div>
+    <div class="rightCol galleryCard">
+      <div style="display:flex; justify-content:space-between; align-items:center;">
+        <strong>Captured Images</strong>
+        <small style="color:#181313; font-size:0.9rem;">Max: <span id="maxPhotosLabel">Loading...</span></small>
       </div>
-      <div class="rightCol">
-        <div id="gallery"></div>
-      </div>
+      <div id="gallery" style="margin-top:12px;"></div>
     </div>
-    <div class="modal-backdrop">
-      <div class="modal">
-        <h3>Leaf Recognition Details</h3>
-        <form id="leafDetailsForm">
-          <div class="form-row">
-            <label for="leafName">Leaf Name</label>
-            <input type="text" id="leafName" name="leafName">
-          </div>
-          <div class="form-row">
-            <label for="leafDescription">Description</label>
-            <textarea id="leafDescription" name="leafDescription"></textarea>
-          </div>
-          <div class="actions">
-            <button type="button" class="btn-secondary" onclick="closeModal()">Cancel</button>
-            <button type="submit" class="btn-primary">Save</button>
-          </div>
-        </form>
-      </div>
-    </div>
-    <script>
-      function startScan() {
-        console.log("Scanning started...");
-        // Add webcam start logic
-      }
-      
-      function stopScan() {
-        console.log("Scanning stopped...");
-        // Add webcam stop logic
-      }
+  </div>
 
-      function closeModal() {
-        document.querySelector('.modal-backdrop').style.display = 'none';
-      }
-    </script>
-  </body>
+  <!-- modal for Ask AI / feedback -->
+  <div class="modal-backdrop" id="modalBackdrop">
+    <div class="modal" role="dialog" aria-modal="true">
+      <h3 id="modalTitle">Ask AI about —</h3>
+
+      <div class="form-row">
+        <label>Item name</label>
+        <input type="text" id="modalName" />
+      </div>
+
+      <div class="form-row">
+        <label>Previous details (system info)</label>
+        <div class="chatArea" id="modalPrevDetails"></div>
+      </div>
+
+      <div class="form-row">
+        <label>Your question / feedback</label>
+        <textarea id="modalQuestion" rows="3" placeholder="Type your question for the AI..."></textarea>
+      </div>
+
+      <div class="actions">
+        <button class="btn-secondary" id="modalClose">Close</button>
+        <button id="modalSend">Send to AI</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- TensorFlow.js & Teachable Machine -->
+  <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@latest/dist/tf.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@teachablemachine/image@latest/dist/teachablemachine-image.min.js"></script>
+
+<script>
+  // ---- CONFIG ----
+  const URL = "./";           
+  const CAPTURE_WIDTH = 320;
+  const CAPTURE_HEIGHT = 320;
+  const MIN_DELAY_MS = 1;           
+  const MAX_DELAY_MS = 5000;           
+  const MAX_PHOTOS = 3;               
+  const SCAN_DURATION_MS = 70;        
+
+  // state
+  let model, webcam, maxPredictions;
+  let running = false;
+  let captureTimer = null;
+
+  // elements
+  const startBtn = document.getElementById("startBtn");
+  const stopBtn  = document.getElementById("stopBtn");
+  const webcamContainer = document.getElementById("webcam-container");
+  const scannerOverlay = document.getElementById("scannerOverlay");
+  const flashOverlay = document.getElementById("flashOverlay");
+  const topBox = document.getElementById("topPredictionBox");
+  const topLabel = document.getElementById("topLabel");
+  const topPercent = document.getElementById("topPercent");
+  const topTime = document.getElementById("topTime");
+  const labelContainer = document.getElementById("label-container");
+  const gallery = document.getElementById("gallery");
+  document.getElementById("maxPhotosLabel").innerText = MAX_PHOTOS;
+
+  startBtn.addEventListener("click", startAll);
+  stopBtn.addEventListener("click", stopAll);
+
+  // ---- Saved Details for Free AI ----
+  const savedDetails = {
+    "හැට්ට කට්ටක්": { description: "LeafA is medicinal, grows in tropical areas.", uses: "Used in herbal teas and poultices.", extra: "Rich in antioxidants." },
+    "pensil": { description: "LeafB is edible, used in salads.", uses: "Can be cooked or eaten raw.", extra: "High in vitamin C." },
+    "LeafC": { description: "LeafC is ornamental, popular in gardens.", uses: "Used for decoration.", extra: "Requires moderate sunlight." }
+  };
+
+  let currentLeafName = "";
+
+  async function startAll(){
+    startBtn.disabled = true;
+    startBtn.innerText = "Loading model...";
+    try {
+      const modelURL = URL + "model.json";
+      const metadataURL = URL + "metadata.json";
+      model = await tmImage.load(modelURL, metadataURL);
+      maxPredictions = model.getTotalClasses();
+    } catch(err){
+      alert("Model load failed. Serve files via HTTP (e.g., python -m http.server). Error in console.");
+      console.error(err);
+      startBtn.disabled = false;
+      startBtn.innerText = "Start Webcam & Model";
+      return;
+    }
+
+    const flip = true;
+    webcam = new tmImage.Webcam(CAPTURE_WIDTH, CAPTURE_HEIGHT, flip);
+    await webcam.setup();
+    await webcam.play();
+
+    webcamContainer.querySelectorAll("canvas").forEach(n => n.remove());
+    webcamContainer.appendChild(webcam.canvas);
+
+    labelContainer.innerHTML = "";
+    for(let i=0;i<maxPredictions;i++){
+      const div = document.createElement("div");
+      div.className = "predRow";
+      div.innerHTML = `<span id="pn_${i}">—</span><span id="pp_${i}">—</span>`;
+      labelContainer.appendChild(div);
+    }
+
+    running = true;
+    stopBtn.style.display = "inline-block";
+    startBtn.innerText = "Running";
+
+    window.requestAnimationFrame(loop);
+    scheduleNextCapture();
+  }
+
+  document.getElementById("toggleResultsBtn").addEventListener("click", () => {
+      const table = document.getElementById("label-table");
+      table.style.display = (table.style.display === "none") ? "table" : "none";
+  });
+
+  function stopAll(){
+    running = false;
+    if (webcam) webcam.stop();
+    if (captureTimer) clearTimeout(captureTimer);
+    startBtn.disabled = false;
+    startBtn.innerText = "Start Webcam & Model";
+    stopBtn.style.display = "none";
+    topBox.style.display = "none";
+  }
+
+  async function loop(){
+    if (!running) return;
+    webcam.update();
+    await predict(false);
+    window.requestAnimationFrame(loop);
+  }
+
+  async function predict(showTop=true){
+    if (!model) return;
+    const prediction = await model.predict(webcam.canvas);
+    let best = prediction[0];
+    for (let i=0;i<prediction.length;i++){
+      const name = prediction[i].className;
+      const prob = (prediction[i].probability * 100);
+      const elName = document.getElementById(`pn_${i}`);
+      const elProb = document.getElementById(`pp_${i}`);
+      if (elName) elName.innerText = name;
+      if (elProb) elProb.innerText = prob.toFixed(2) + "%";
+      if (prediction[i].probability > best.probability) best = prediction[i];
+    }
+    if (showTop && best){
+      showTopPrediction(best.className, (best.probability*100).toFixed(2));
+    }
+    return prediction;
+  }
+
+  function showTopPrediction(name, percent){
+    topLabel.innerText = name;
+    topPercent.innerText = percent + "%";
+    topTime.innerText = new Date().toLocaleTimeString();
+    topBox.style.display = "block";
+  }
+
+  function scheduleNextCapture(){
+    if (!running) return;
+    const delay = Math.floor(Math.random() * (MAX_DELAY_MS - MIN_DELAY_MS + 1)) + MIN_DELAY_MS;
+    captureTimer = setTimeout(async ()=>{
+      startScanAnimation();
+      setTimeout(async ()=>{
+        await performCapture();
+        stopScanAnimation();
+        scheduleNextCapture();
+      }, SCAN_DURATION_MS);
+    }, delay);
+  }
+
+  function startScanAnimation(){ scannerOverlay.classList.add("scanning"); }
+  function stopScanAnimation(){ scannerOverlay.classList.remove("scanning"); }
+
+  async function performCapture(){
+    if (!webcam || !model) return;
+    const prediction = await model.predict(webcam.canvas);
+    let best = prediction[0];
+    for (let i=1;i<prediction.length;i++){
+      if (prediction[i].probability > best.probability) best = prediction[i];
+    }
+
+    flashOverlay.classList.add("visible");
+    setTimeout(()=> flashOverlay.classList.remove("visible"), 200);
+
+    const off = document.createElement("canvas");
+    off.width = CAPTURE_WIDTH;
+    off.height = CAPTURE_HEIGHT;
+    const ctx = off.getContext("2d");
+    ctx.drawImage(webcam.canvas, 0, 0, off.width, off.height);
+    const dataURL = off.toDataURL("image/png");
+
+    const card = document.createElement("div");
+    card.className = "captureCard";
+    const img = document.createElement("img");
+    img.src = dataURL;
+    const meta = document.createElement("div");
+    meta.className = "meta";
+    const now = new Date();
+    const timeStr = now.toLocaleString();
+    const predText = best ? `${best.className} (${(best.probability*100).toFixed(2)}%)` : "—";
+    meta.innerHTML = `<strong>${predText}</strong><br><small>${timeStr}</small>`;
+
+    const dl = document.createElement("a");
+    dl.className = "downloadBtn";
+    dl.href = "#"; 
+    dl.innerText = "ASK AI";
+    dl.onclick = ()=>openAIModal(best.className);
+
+    card.appendChild(img);
+    card.appendChild(meta);
+    card.appendChild(dl);
+
+    gallery.insertBefore(card, gallery.firstChild);
+
+    showTopPrediction(best.className, (best.probability*100).toFixed(2));
+    topTime.innerText = timeStr;
+
+    while (gallery.childNodes.length > MAX_PHOTOS){
+      gallery.removeChild(gallery.lastChild);
+    }
+  }
+
+  window.addEventListener("beforeunload", ()=>{ if (webcam) try{ webcam.stop(); }catch(e){} });
+
+  // ---- Modal AI functions ----
+  function openAIModal(name){
+    currentLeafName = name;
+    const modal = document.getElementById('aiModal');
+    modal.style.display = 'block';
+
+    const chatBox = document.getElementById("aiChatContent");
+    chatBox.innerHTML = "";
+
+    const info = savedDetails[name];
+    if(info){
+      chatBox.innerHTML = `
+        <div><strong>Description:</strong> ${info.description}</div>
+        <div><strong>Uses:</strong> ${info.uses}</div>
+        <div><strong>Extra:</strong> ${info.extra}</div>
+      `;
+    } else {
+      chatBox.innerHTML = `<div>No info available for ${name}</div>`;
+    }
+
+    document.getElementById('aiQuestion').value = `Tell me more about ${name}`;
+  }
+
+  function modalSend(question, name){
+    const info = savedDetails[name];
+    const simulatedReply = info 
+      ? `💡 Answer from saved info: ${info.description} Uses: ${info.uses}. Extra: ${info.extra}` 
+      : `No info available for ${name}`;
+
+    const chatBox = document.getElementById("aiChatContent");
+    const div = document.createElement("div");
+    div.innerHTML = `<strong>AI:</strong> ${simulatedReply}`;
+    chatBox.appendChild(div);
+    chatBox.scrollTop = chatBox.scrollHeight;
+  }
+
+</script>
+
+<!-- AI Modal HTML (add inside <body>) -->
+<div id="aiModal" style="
+    display:none;
+    position:fixed;
+    top:10%;
+    left:50%;
+    transform:translateX(-50%);
+    width:340px;
+    max-width:90%;
+    background:#f9f9f9;
+    padding:16px;
+    border-radius:12px;
+    box-shadow:0 12px 24px rgba(0,0,0,0.25);
+    z-index:999;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+">
+  <h3 style="margin-top:0; margin-bottom:10px; color:#4caf50; text-align:center;">Leaf Chat</h3>
+
+  <div id="aiChatContent" style="
+      height:180px;
+      overflow-y:auto;
+      border:1px solid #ccc;
+      border-radius:8px;
+      padding:8px;
+      margin-bottom:10px;
+      background:#fff;
+      scrollbar-width:thin;
+      scrollbar-color:#4caf50 #eee;
+  "></div>
+
+  <input type="text" id="aiQuestion" placeholder="Ask about this leaf..." style="
+      width:100%;
+      padding:8px;
+      margin-bottom:10px;
+      border:1px solid #ccc;
+      border-radius:8px;
+      outline:none;
+      transition:0.2s;
+  " onfocus="this.style.borderColor='#4caf50';" onblur="this.style.borderColor='#ccc';">
+
+  <div style="display:flex; gap:8px;">
+    <button onclick="modalSend(document.getElementById('aiQuestion').value, currentLeafName)" style="
+        flex:1;
+        padding:8px;
+        background:#4caf50;
+        color:#fff;
+        border:none;
+        border-radius:8px;
+        cursor:pointer;
+        transition:0.2s;
+    " onmouseover="this.style.background='#43a047';" onmouseout="this.style.background='#4caf50';">Send</button>
+
+    <button onclick="document.getElementById('aiModal').style.display='none';" style="
+        flex:1;
+        padding:8px;
+        background:#f44336;
+        color:#fff;
+        border:none;
+        border-radius:8px;
+        cursor:pointer;
+        transition:0.2s;
+    " onmouseover="this.style.background='#d32f2f';" onmouseout="this.style.background='#f44336';">Close</button>
+  </div>
+</div>
+
+
+</body>
 </html>
