@@ -130,11 +130,11 @@
   </head>
 
 <body>
-  <h1>Leaf Recognition</h1>
-  <p class="lead">Camara preview</p>
+  <h1>කොළ හඳුනාගැනීම</h1>
+  <p class="lead">කැමරා පෙරදසුන සදහා වෙබ් කැමරාව ආරම්භ කරන්න මත ක්ලික් කරන්න</p>
 
   <div id="controls">
-    <button id="startBtn">Start Webcam & Model</button>
+    <button id="startBtn">වෙබ් කැමරාව ආරම්භ කරන්න</button>
     <button id="stopBtn" class="stop" style="display:none;">Stop</button>
   </div>
 
@@ -146,10 +146,10 @@
       </div>
 
       <div id="topPredictionBox"><span id="topLabel">—</span><span style="float:right;font-weight:800;" id="topPercent">—</span>
-        <div style="clear:both; margin-top:6px; font-size:0.9rem; color:#444;">Captured at: <span id="topTime">—</span></div>
+        <div style="clear:both; margin-top:6px; font-size:0.9rem; color:#444;">ලබාගත් වෙලාව <span id="topTime">—</span></div>
       </div>
       <br>
-      <button id="toggleResultsBtn">👁 Show/Hide Results</button>
+      <button id="toggleResultsBtn">👁 ප්‍රථිපල පෙන්වන්න/සගවන්න</button>
       <table id="label-table" style="margin: 10px auto; border-collapse: collapse; display: table;">
           <thead>
               <tr>
@@ -164,7 +164,7 @@
 
     <div class="rightCol galleryCard">
       <div style="display:flex; justify-content:space-between; align-items:center;">
-        <strong>Captured Images</strong>
+        <strong>ලබගත් පින්තූර</strong>
         <small style="color:#181313; font-size:0.9rem;">Max: <span id="maxPhotosLabel">Loading...</span></small>
       </div>
       <div id="gallery" style="margin-top:12px;"></div>
@@ -237,7 +237,7 @@
   // ---- Saved Details for Free AI ----
   const savedDetails = {
     "පේර ශාකය": { description: "🌿 පේර කොල (Psidium guajava) ශ්‍රී ලංකාවේ බොහෝම ජනප්‍රිය පලාතුරු ගසක කොළයයි. පේර කොලට සුවඳ සහිත ඖෂධීය ගුණ බොහෝ ඇත. ඒවා ඇන්ටි-ඔක්සිඩන්ට්, ඇන්ටි-බැක්ටීරියා සහ ඇන්ටි-ඇන්ෆ්ලමටරි ගුණ වලින් සමන්විත වේ. සම්ප්‍රදායික වෛද්‍ය ක්‍රමවලදී මේ කොළ මූත්‍රා මාර්ග රෝග, දියවැඩියාව, කම්මුල් සහ දන්ත ගැටළු සනීප කිරීමට භාවිතා කරයි. තවද කොළෙන් තේ සකසා පානය කිරීම මඟින් ආහාර වරදීම, මස් දාත් රෝග සහ මුඛ දුර්ගන්ධය අඩු කිරීමට උපකාරී වේ.", extra: " පේර කොල තුළ ඇති ටැනින්, ෆ්ලැවොනොයිඩ් සහ විටමින් C වැනි රසායනික සංයෝග සිරුරට ආරක්ෂක බලකොටුවක් ලෙස ක්‍රියා කරයි." },
-    "pensil": { description: "LeafB is edible, used in salads.", uses: "Can be cooked or eaten raw.", extra: "High in vitamin C." },
+    "පරීක්ශන පැන්සල": { description: "LeafB is edible, used in salads.", uses: "Can be cooked or eaten raw.", extra: "High in vitamin C." },
     "LeafC": { description: "LeafC is ornamental, popular in gardens.", uses: "Used for decoration.", extra: "Requires moderate sunlight." }
   };
 
@@ -415,10 +415,10 @@
         <div><strong>Extra:</strong> ${info.extra}</div>
       `;
     } else {
-      chatBox.innerHTML = `<div>No info available for ${name}</div>`;
+      chatBox.innerHTML = `<div>${name} කුමක් හෝ වැරදී ඇත.</div>`;
     }
 
-    document.getElementById('aiQuestion').value = `Tell me more about ${name}`;
+    document.getElementById('aiQuestion').value = `${name} පිලිබද තව කරුනු`;
   }
 
   function modalSend(question, name){
