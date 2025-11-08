@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>WhatsApp Chat Viewer</title>
+<title>WhatsApp Chat Viewer - Lazy Load</title>
 <style>
   body {
     margin: 0;
@@ -57,10 +57,6 @@
     text-align: right;
     margin-top: 3px;
   }
-  .sender {
-    font-weight: bold;
-    margin-bottom: 3px;
-  }
 </style>
 </head>
 <body>
@@ -71,16 +67,13 @@
 </div>
 
 <script>
-// =====================
-// 🟩 CONFIGURATION
-// =====================
+const meName = "සෙව්මිණි {WA}";   // ඔයාගෙ නම
+const otherName = "Kinara Chamara"; // ඔහු/ඇයගෙ නම
 
-// මම සහ ඔහු/ඇය ලෙස නම දාන්න
-const meName = "";
-const otherName = "";
 
-// WhatsApp export text එක මෙතන දාන්න
 const chatText = `
+
+
 9/6/25, 06:38 - Messages and calls are end-to-end encrypted. Only people in this chat can read, listen to, or share them. Learn more.
 10/31/25, 06:00 - සෙව්මිණි {WA}: ගුම් මෝනින් සුදූ
 10/31/25, 06:02 - Kinara Chamara: ගුම්මෝනිං පැටියෝ...🙃❤️‍🩹
@@ -6808,36 +6801,62 @@ error🤌🏻😹
 11/6/25, 11:22 - Kinara Chamara: මං ඕන්නං චැට් එක export කරන්නම්❤️🤌🏻
 11/6/25, 11:22 - සෙව්මිණි {WA}: හා😕😕🥹
 11/6/25, 11:23 - සෙව්මිණි {WA}: මට දුකයි
+
+
+
 `;
 
-// =====================
-// 🟩 CHAT PARSER
-// =====================
-const chatBox = document.getElementById('chatBox');
-const lines = chatText.trim().split('\n');
+// 🟩 Lazy Load Config
+const CHUNK_SIZE = 200; // පළවෙනි එකට load වෙන සංඛ්‍යාව
+let messages = [];
+let currentIndex = 0;
 
-lines.forEach(line => {
-  const match = line.match(/^\[(.*?)\]\s(.*?):\s(.*)$/);
-  if (match) {
-    const time = match[1];
-    const sender = match[2];
-    const message = match[3];
-    const div = document.createElement('div');
-    div.classList.add('msg');
+// 🧠 Message Parsing Function
+function parseMessages(text) {
+  const lines = text.trim().split(/\n+/);
+  return lines.map(line => {
+    const match = line.match(/^(\d{1,2}\/\d{1,2}\/\d{2,4}),\s(\d{1,2}:\d{2})\s-\s([^:]+):\s([\s\S]*)$/);
+    if (!match) return null;
+    const [, date, time, sender, msg] = match;
+    const who = sender.includes(meName) ? "me" : "other";
+    return { date, time, sender, msg, who };
+  }).filter(Boolean);
+}
 
-    if (sender.includes('Kinara')) {
-      div.classList.add('me');
-      div.innerHTML = `<div class="sender">${meName}</div>${message}<div class="timestamp">${time}</div>`;
-    } else {
-      div.classList.add('other');
-      div.innerHTML = `<div class="sender">${otherName}</div>${message}<div class="timestamp">${time}</div>`;
-    }
+// 🧱 Render Chat Function
+function renderChunk() {
+  const chatBox = document.getElementById("chatBox");
+  const end = Math.min(currentIndex + CHUNK_SIZE, messages.length);
+  const fragment = document.createDocumentFragment();
 
-    chatBox.appendChild(div);
+  for (let i = currentIndex; i < end; i++) {
+    const m = messages[i];
+    const div = document.createElement("div");
+    div.className = `msg ${m.who}`;
+    div.innerHTML = `
+      <div>${m.msg.replace(/</g,"&lt;").replace(/>/g,"&gt;")}</div>
+      <div class="timestamp">${m.time}</div>
+    `;
+    fragment.appendChild(div);
+  }
+
+  chatBox.appendChild(fragment);
+  currentIndex = end;
+}
+
+// 🔁 Lazy Load When Scroll Bottom
+document.getElementById("chatBox").addEventListener("scroll", function() {
+  const box = this;
+  if (box.scrollTop + box.clientHeight >= box.scrollHeight - 50) {
+    renderChunk();
   }
 });
 
-chatBox.scrollTop = chatBox.scrollHeight;
+// 🏁 Initialize
+window.addEventListener("load", () => {
+  messages = parseMessages(chatText);
+  renderChunk(); // load first 200
+});
 </script>
 
 </body>
