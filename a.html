@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Animated Transparent GIF Overlays</title>
+  <style>
+    body {
+      margin: 0;
+      background-color: black;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      overflow: hidden;
+      color: white;
+      font-family: 'Noto Sans Sinhala', sans-serif;
+    }
+
+    .title {
+      font-size: 48px;
+      font-weight: bold;
+      text-align: center;
+      margin-bottom: 20px;
+      display: flex;
+      align-items: center;
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      opacity: 1;
+      transition: opacity 1.5s ease-in-out;  /* Smooth fade effect */
+      z-index: 9999;  /* Ensure title is on top */
+    }
+
+    .title img {
+      width: 50px;
+      height: auto;
+      margin-right: 10px;
+      margin-left: 10px;
+    }
+
+    #container {
+      position: relative;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      max-width: 90vw;
+      max-height: 90vh;
+      overflow: hidden;
+    }
+
+    #background {
+      display: block;
+      width: 100%;
+      height: auto;
+    }
+
+    .overlay-gif {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: auto;
+      pointer-events: none;
+      opacity: 0;  /* Initially hidden */
+      transition: opacity 1.5s ease-in-out;  /* Smooth fade-in for overlays */
+    }
+
+    audio {
+      display: none;
+    }
+
+    #playButton {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      background: transparent;
+      border: none;
+      color: white;
+      font-size: 24px;
+      cursor: pointer;
+      z-index: 9999;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Title with emoji image -->
+  <h2 id="title" class="title">
+    <img src="lo.png" alt="Emoji">
+    සදකිදුරු ජාතකය
+    <img src="lo.png" alt="Emoji">
+  </h2>
+
+  <!-- Container -->
+  <div id="container">
+    <img id="background" src="bg/black.jpg" alt="Background">
+
+    <!-- Initially hide the GIFs and images -->
+    <img class="overlay-gif" src="gifs/00p01a.gif" alt="">
+    <img class="overlay-gif" src="1.png" alt="1 peththa">
+    <img class="overlay-gif" src="2.png" alt="">
+    <img class="overlay-gif" src="3.png" alt="">
+    <img class="overlay-gif" src="4.png" alt="">
+    <img class="overlay-gif" src="5.png" alt="">
+    <img class="overlay-gif" src="6.png" alt="">
+    <img class="overlay-gif" src="7.png" alt="">
+    <img class="overlay-gif" src="8.png" alt="">
+    <img class="overlay-gif" src="10.png" alt="">
+    <img class="overlay-gif" src="TEST.png" alt="">
+  </div>
+
+  <script>
+    // Wait for 1 second after page load, then start the fade-out of the title
+    setTimeout(function() {
+      // Fade out the title
+      document.getElementById("title").style.opacity = "0";  // Fade out title
+
+      // After 1.5 seconds (to match the fade duration), hide title completely
+      setTimeout(function() {
+        document.getElementById("title").style.display = "none";  // Hide title completely
+
+        // Now fade in the GIFs and Canvas elements
+        const overlays = document.querySelectorAll('.overlay-gif');
+        overlays.forEach(function(overlay) {
+          overlay.style.opacity = '1';  // Fade in smoothly
+        });
+
+        // After the GIFs are visible, bring the title back and fade in again
+        setTimeout(function() {
+          // Make title visible and position it back to its original place
+          document.getElementById("title").style.display = "flex";  // Show title again
+          document.getElementById("title").style.opacity = "1";  // Fade in the title
+          document.getElementById("title").style.position = "relative";  // Bring title back to its original position
+          document.getElementById("title").style.top = "10px";  // Move title upwards
+          document.getElementById("title").style.left = "auto";
+          document.getElementById("title").style.transform = "none";
+        }, 1000); // Delay before showing the title again
+
+      }, 1500); // Wait for the title fade to complete before showing the GIFs
+    }, 1000); // Wait 1 second before starting the fade effect
+  </script>
+
+</body>
+</html>
